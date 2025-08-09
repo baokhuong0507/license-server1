@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from pathlib import Path
 from datetime import datetime, timedelta
 import io, csv, bcrypt
-
+from typing import Optional
 from .models import (
     Base, User, LicenseKey, KeyStatus,
     Activation, ActivationStatus
@@ -49,10 +49,28 @@ def admin_login_form(request: Request):
     return templates.TemplateResponse("login.html", {"request": request, "error": None})
 
 @app.post("/admin/login")
-async def admin_login(request: Request, email: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+async def admin_login(
+    request: Request,
+    email: Optional[str] = Form(None),
+    password: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    # nếu form trống -> trả lại trang login với thông báo
+    if not email or not password:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Vui lòng nhập email và mật khẩu"},
+            status_code=400,
+        )
+
     user = db.query(User).filter_by(email=email).first()
     if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Sai email hoặc mật khẩu"})
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Sai email hoặc mật khẩu"},
+            status_code=401,
+        )
+
     request.session["admin_email"] = user.email
     return RedirectResponse(url="/admin/keys", status_code=303)
 

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quản lý Key</title>
+</head>
+<body>
+    <h2>Danh sách key</h2>
+    <table border="1">
+        <tr><th>Key</th><th>Trạng thái</th><th>Thiết bị</th><th>Hành động</th></tr>
+        {% for k in keys %}
+        <tr>
+            <td>{{ k.key }}</td>
+            <td>{{ k.status }}</td>
+            <td>{{ k.device }}</td>
+            <td>
+                <form method="post" action="/admin/force-unbind">
+                    <input type="hidden" name="key_id" value="{{ k.id }}">
+                    <button type="submit">Unbind</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    <a href="/admin/logout">Đăng xuất</a>
+</body>
+</html>

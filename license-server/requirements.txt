@@ -7,4 +7,4 @@ bcrypt
 psycopg2-binary
 pydantic-settings
 python-multipart
-gunicorn
+starlette

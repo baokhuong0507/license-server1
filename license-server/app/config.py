@@ -1,4 +1,8 @@
 from pydantic_settings import BaseSettings
+class Settings(BaseSettings):
+    # ... các dòng đang có ...
+    ADMIN_EMAIL: str = "admin@example.com"
+    ADMIN_PASSWORD: str = "admin123"
 
 class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./data.db"

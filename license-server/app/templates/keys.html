@@ -1,11 +1,31 @@
 {% extends 'base.html' %}
 {% block content %}
+<p>
+  <a href="/admin/logout">Đăng xuất</a> ·
+  <a href="/admin/monitor">Giám sát online</a> ·
+  <a href="/admin/keys/export">Xuất CSV</a>
+</p>
+
+<h3>Thêm Key</h3>
 <form method="post" action="/admin/keys">
   <div class="grid">
     <input name="key" placeholder="XXXX-XXXX-XXXX-XXXX" required />
-    <input name="note" placeholder="Ghi chú" />
+    <input name="note" placeholder="Ghi chú (tuỳ chọn)" />
     <button type="submit">Tạo key</button>
   </div>
+</form>
+
+<h3>Danh sách key</h3>
+<form method="get" action="/admin/keys" style="margin: 0 0 1rem 0">
+  <input type="text" name="q" placeholder="Tìm theo key hoặc ghi chú" value="{{ q or '' }}" />
+  <select name="status">
+    <option value="ALL" {% if status == 'ALL' %}selected{% endif %}>Tất cả</option>
+    <option value="ACTIVE" {% if status == 'ACTIVE' %}selected{% endif %}>ACTIVE</option>
+    <option value="DISABLED" {% if status == 'DISABLED' %}selected{% endif %}>DISABLED</option>
+    <option value="TEMP_LOCKED" {% if status == 'TEMP_LOCKED' %}selected{% endif %}>TEMP_LOCKED</option>
+    <option value="DELETED" {% if status == 'DELETED' %}selected{% endif %}>DELETED</option>
+  </select>
+  <button type="submit">Lọc</button>
 </form>
 
 <table role="grid">
@@ -17,7 +37,11 @@
     <tr>
       <td><code>{{ k.key }}</code></td>
       <td class="status {{ k.status.name }}">{{ k.status.name }}</td>
-      <td>{{ k.note or '' }}</td>
+      <td>
+        <form method="post" action="/admin/keys/{{k.id}}/update">
+          <input name="note" value="{{ k.note or '' }}" placeholder="Sửa ghi chú và Enter" />
+        </form>
+      </td>
       <td>
         <form style="display:inline" method="post" action="/admin/keys/{{k.id}}/enable"><button>Enable</button></form>
         <form style="display:inline" method="post" action="/admin/keys/{{k.id}}/disable"><button>Disable</button></form>
@@ -29,4 +53,12 @@
   {% endfor %}
   </tbody>
 </table>
+
+<style>
+  .status{font-weight:600}
+  .ACTIVE{color:green}
+  .DISABLED{color:#c90}
+  .TEMP_LOCKED{color:#d00}
+  .DELETED{color:#666}
+</style>
 {% endblock %}

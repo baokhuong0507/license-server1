@@ -1,74 +1,48 @@
-from fastapi import FastAPI, Request, Depends, Form
+from fastapi import FastAPI, Request, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
-from .models import Base, User, LicenseKey, KeyStatus
-from .deps import engine, get_db
-from .routers.client_api import router as client_api_router
-from .services.keys import set_key_status
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 import bcrypt
 
-app = FastAPI(title="License Server")
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app = FastAPI()
+app.add_middleware(SessionMiddleware, secret_key="your-secret-key")
+
 templates = Jinja2Templates(directory="app/templates")
 
-# Create tables & default admin on startup
-Base.metadata.create_all(bind=engine)
+ADMIN_USER = "admin"
+ADMIN_PASS_HASH = bcrypt.hashpw("123456".encode(), bcrypt.gensalt())
 
-def ensure_admin(db: Session):
-    admin = db.query(User).filter_by(email="admin@example.com").first()
-    if not admin:
-        pw_hash = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode()
-        admin = User(email="admin@example.com", password_hash=pw_hash)
-        db.add(admin); db.commit()
+# Login page
+@app.get("/admin/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
-@app.on_event("startup")
-async def startup_event():
-    with next(get_db()) as db:
-        ensure_admin(db)
+@app.post("/admin/login")
+async def login(request: Request, username: str = Form(...), password: str = Form(...)):
+    if username == ADMIN_USER and bcrypt.checkpw(password.encode(), ADMIN_PASS_HASH):
+        request.session["admin"] = True
+        return RedirectResponse(url="/admin/monitor", status_code=302)
+    return templates.TemplateResponse("login.html", {"request": request, "error": "Sai tài khoản hoặc mật khẩu"})
 
-# Simple admin page (no login yet)
-@app.get("/admin/keys", response_class=HTMLResponse)
-def admin_keys(request: Request, db: Session = Depends(get_db)):
-    keys = db.query(LicenseKey).order_by(LicenseKey.created_at.desc()).all()
-    return templates.TemplateResponse("keys.html", {"request": request, "keys": keys, "KeyStatus": KeyStatus})
+@app.get("/admin/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/admin/login", status_code=302)
 
-@app.post("/admin/keys")
-async def create_key(key: str = Form(...), note: str = Form(""), db: Session = Depends(get_db)):
-    k = LicenseKey(key=key, note=note)
-    db.add(k); db.commit()
-    return RedirectResponse(url="/admin/keys", status_code=303)
+def require_admin(request: Request):
+    if not request.session.get("admin"):
+        raise HTTPException(status_code=403, detail="Not authorized")
 
-@app.post("/admin/keys/{key_id}/enable")
-async def key_enable(key_id: str, db: Session = Depends(get_db)):
-    k = db.query(LicenseKey).get(key_id)
-    set_key_status(db, k, KeyStatus.ACTIVE)
-    return RedirectResponse(url="/admin/keys", status_code=303)
+# Monitor keys
+@app.get("/admin/monitor", response_class=HTMLResponse)
+async def monitor(request: Request):
+    require_admin(request)
+    keys = []  # TODO: Lấy danh sách key và trạng thái từ DB
+    return templates.TemplateResponse("monitor.html", {"request": request, "keys": keys})
 
-@app.post("/admin/keys/{key_id}/disable")
-async def key_disable(key_id: str, db: Session = Depends(get_db)):
-    k = db.query(LicenseKey).get(key_id)
-    set_key_status(db, k, KeyStatus.DISABLED)
-    return RedirectResponse(url="/admin/keys", status_code=303)
-
-@app.post("/admin/keys/{key_id}/lock")
-async def key_lock(key_id: str, db: Session = Depends(get_db)):
-    k = db.query(LicenseKey).get(key_id)
-    set_key_status(db, k, KeyStatus.TEMP_LOCKED)
-    return RedirectResponse(url="/admin/keys", status_code=303)
-
-@app.post("/admin/keys/{key_id}/unlock")
-async def key_unlock(key_id: str, db: Session = Depends(get_db)):
-    k = db.query(LicenseKey).get(key_id)
-    set_key_status(db, k, KeyStatus.ACTIVE)
-    return RedirectResponse(url="/admin/keys", status_code=303)
-
-@app.post("/admin/keys/{key_id}/delete")
-async def key_delete(key_id: str, db: Session = Depends(get_db)):
-    k = db.query(LicenseKey).get(key_id)
-    set_key_status(db, k, KeyStatus.DELETED)
-    return RedirectResponse(url="/admin/keys", status_code=303)
-
-# Mount client API
-app.include_router(client_api_router)
+@app.post("/admin/force-unbind")
+async def force_unbind(request: Request, key_id: str = Form(...)):
+    require_admin(request)
+    # TODO: Cập nhật DB để unbind key này
+    return RedirectResponse(url="/admin/monitor", status_code=302)

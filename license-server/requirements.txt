@@ -4,3 +4,5 @@ sqlalchemy
 python-jose[cryptography]
 jinja2
 bcrypt
+psycopg2-binary
+

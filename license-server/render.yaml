@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: license-server
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_TTL_MINUTES
+        value: "120"
+      - key: HEARTBEAT_TIMEOUT_SEC
+        value: "120"
+      - key: TEMP_LOCK_MINUTES
+        value: "30"
+      - key: OFFLINE_TTL_MINUTES
+        value: "0"

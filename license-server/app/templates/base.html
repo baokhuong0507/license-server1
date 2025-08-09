@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title or 'License Admin' }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style> .status{font-weight:600} .ACTIVE{color:green} .DISABLED{color:#c90} .TEMP_LOCKED{color:#d00} .DELETED{color:#666} </style>
+</head>
+<body>
+  <main class="container">
+    <h2>{{ title or 'License Admin' }}</h2>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

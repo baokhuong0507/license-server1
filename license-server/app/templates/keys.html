@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<form method="post" action="/admin/keys">
+  <div class="grid">
+    <input name="key" placeholder="XXXX-XXXX-XXXX-XXXX" required />
+    <input name="note" placeholder="Ghi chú" />
+    <button type="submit">Tạo key</button>
+  </div>
+</form>
+
+<table role="grid">
+  <thead>
+    <tr><th>Key</th><th>Trạng thái</th><th>Ghi chú</th><th>Hành động</th></tr>
+  </thead>
+  <tbody>
+  {% for k in keys %}
+    <tr>
+      <td><code>{{ k.key }}</code></td>
+      <td class="status {{ k.status.name }}">{{ k.status.name }}</td>
+      <td>{{ k.note or '' }}</td>
+      <td>
+        <form style="display:inline" method="post" action="/admin/keys/{{k.id}}/enable"><button>Enable</button></form>
+        <form style="display:inline" method="post" action="/admin/keys/{{k.id}}/disable"><button>Disable</button></form>
+        <form style="display:inline" method="post" action="/admin/keys/{{k.id}}/lock"><button>Lock</button></form>
+        <form style="display:inline" method="post" action="/admin/keys/{{k.id}}/unlock"><button>Unlock</button></form>
+        <form style="display:inline" method="post" action="/admin/keys/{{k.id}}/delete"><button>Delete</button></form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

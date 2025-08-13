@@ -64,7 +64,7 @@
         </table>
     </div>
 
-    <!-- KHỐI MÃ JAVASCRIPT ĐÃ SỬA LẠI HÀM PERFORM API ACTION -->
+    <!-- KHỐI MÃ JAVASCRIPT ĐÃ ĐƯỢC SỬA LẠI ĐỂ DÙNG COOKIE TỰ ĐỘNG -->
     <script>
         const statusMap = { 'active': 'Sẵn dùng', 'used': 'Đã dùng', 'revoked': 'Đã khóa', 'expired': 'Hết hạn' };
         const statusColors = { 'active': 'black', 'used': 'green', 'revoked': 'orange', 'expired': 'grey' };
@@ -78,23 +78,18 @@
         async function performApiAction(endpoint, body) {
             document.getElementById('loading-indicator').style.display = 'inline';
             try {
-                // Lấy token từ cookie
-                const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
-                if (!token) {
-                    window.location.href = '/admin/login'; // Chuyển hướng nếu không có token
-                    return false;
-                }
-
+                // Trình duyệt sẽ TỰ ĐỘNG đính kèm cookie, không cần gửi Header Authorization
                 const response = await fetch(endpoint, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}` // Gửi token trong Header Authorization
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
-
                 if (!response.ok) {
+                    // Nếu lỗi Unauthorized, chuyển hướng về trang login
+                    if (response.status === 401 || response.status === 403) {
+                        window.location.href = '/admin/login';
+                        return false;
+                    }
                     const error = await response.json();
                     alert(`Lỗi: ${error.detail || 'Thao tác thất bại'}`);
                     return false;
@@ -104,75 +99,29 @@
                 alert('Lỗi kết nối. Vui lòng thử lại.');
                 return false;
             } finally {
-                // Cập nhật lại bảng sau mỗi hành động, dù thành công hay thất bại
-                await fetchAndUpdateKeys(false); 
+                await fetchAndUpdateKeys(false);
             }
         }
 
-        async function addKey() {
-            const key_value = document.getElementById('key_value').value;
-            if (!key_value) { alert('Vui lòng nhập giá trị Key.'); return; }
-            const payload = {
-                key_value: key_value,
-                program_name: document.getElementById('program_name_single').value,
-                expiration_date_str: document.getElementById('expiration_date_single').value
-            };
-            if (await performApiAction('/api/admin/keys/add', payload)) {
-                document.getElementById('key_value').value = ''; // Xóa ô nhập liệu nếu thành công
-            }
-        }
-
-        async function bulkAddKeys() {
-            if (!confirm('Bạn có chắc muốn tạo hàng loạt key?')) return;
-            const payload = {
-                quantity: parseInt(document.getElementById('quantity').value),
-                length: parseInt(document.getElementById('length').value),
-                program_name: document.getElementById('program_name_bulk').value,
-                expiration_date_str: document.getElementById('expiration_date_bulk').value
-            };
-            await performApiAction('/api/admin/keys/bulk-add', payload);
-        }
-
+        async function addKey() { const key_value = document.getElementById('key_value').value; if (!key_value) { alert('Vui lòng nhập giá trị Key.'); return; } const payload = { key_value: key_value, program_name: document.getElementById('program_name_single').value, expiration_date_str: document.getElementById('expiration_date_single').value }; if (await performApiAction('/api/admin/keys/add', payload)) { document.getElementById('key_value').value = ''; } }
+        async function bulkAddKeys() { if (!confirm('Bạn có chắc muốn tạo hàng loạt key?')) return; const payload = { quantity: parseInt(document.getElementById('quantity').value), length: parseInt(document.getElementById('length').value), program_name: document.getElementById('program_name_bulk').value, expiration_date_str: document.getElementById('expiration_date_bulk').value }; await performApiAction('/api/admin/keys/bulk-add', payload); }
         async function lockKey(key_value) { await performApiAction('/api/admin/keys/lock', { key_value }); }
         async function unlockKey(key_value) { await performApiAction('/api/admin/keys/unlock', { key_value }); }
         async function deleteKey(key_value) { if (confirm(`Bạn có chắc muốn xóa vĩnh viễn key "${key_value}"?`)) { await performApiAction('/api/admin/keys/delete', { key_value }); } }
-
+        
         function renderTable(keys) {
             const tableBody = document.getElementById('keys-table-body');
-            if (keys.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="11" style="text-align: center;">Không tìm thấy key nào.</td></tr>`;
-                return;
-            }
-            tableBody.innerHTML = keys.map(key => `
-                <tr>
-                    <td>${key.key_value}</td><td>${key.program_name || 'N/A'}</td>
-                    <td><span style="font-weight: bold; color: ${statusColors[key.status] || 'black'};">${statusMap[key.status] || key.status}</span></td>
-                    <td>${formatDate(key.created_at)}</td><td>${key.expiration_date ? formatDate(key.expiration_date) : 'Vĩnh viễn'}</td>
-                    <td>${key.machine_id || 'N/A'}</td><td>${key.activated_by_user || 'N/A'}</td>
-                    <td style="text-align: center;">${key.failed_attempts || 0}</td><td class="last-activated">${timeAgo(key.last_activated_at)}</td>
-                    <td>${key.failed_attempts > 3 ? `<span style="color: red; font-weight: bold;">Bị chia sẻ!</span>` : 'Không có'}</td>
-                    <td style="display: flex; gap: 5px; flex-wrap: wrap; min-width: 180px;">
-                        ${key.status === 'revoked' ? 
-                            `<button type="button" onclick="unlockKey('${key.key_value}')" style="background-color: #28a745;">Mở khóa</button>` :
-                            `<button type="button" onclick="lockKey('${key.key_value}')" style="background-color: #ffc107; color: black;">Tạm khóa</button>`
-                        }
-                        <button type="button" onclick="deleteKey('${key.key_value}')" class="delete-btn">Xóa</button>
-                    </td></tr>`).join('');
+            if (keys.length === 0) { tableBody.innerHTML = `<tr><td colspan="11" style="text-align: center;">Không tìm thấy key nào.</td></tr>`; return; }
+            tableBody.innerHTML = keys.map(key => `<tr><td>${key.key_value}</td><td>${key.program_name || 'N/A'}</td><td><span style="font-weight: bold; color: ${statusColors[key.status] || 'black'};">${statusMap[key.status] || key.status}</span></td><td>${formatDate(key.created_at)}</td><td>${key.expiration_date ? formatDate(key.expiration_date) : 'Vĩnh viễn'}</td><td>${key.machine_id || 'N/A'}</td><td>${key.activated_by_user || 'N/A'}</td><td style="text-align: center;">${key.failed_attempts || 0}</td><td class="last-activated">${timeAgo(key.last_activated_at)}</td><td>${key.failed_attempts > 3 ? `<span style="color: red; font-weight: bold;">Bị chia sẻ!</span>` : 'Không có'}</td><td style="display: flex; gap: 5px; flex-wrap: wrap; min-width: 180px;">${key.status === 'revoked' ? `<button type="button" onclick="unlockKey('${key.key_value}')" style="background-color: #28a745;">Mở khóa</button>` : `<button type="button" onclick="lockKey('${key.key_value}')" style="background-color: #ffc107; color: black;">Tạm khóa</button>`}<button type="button" onclick="deleteKey('${key.key_value}')" class="delete-btn">Xóa</button></td></tr>`).join('');
         }
-
+        
         function filterAndRender() { const statusFilter = document.getElementById('status_filter').value; const programFilter = document.getElementById('program_filter').value.toLowerCase(); const searchFilter = document.getElementById('search_filter').value.toLowerCase(); const filteredKeys = allKeysData.filter(key => (!statusFilter || key.status === statusFilter) && (!programFilter || (key.program_name && key.program_name.toLowerCase().includes(programFilter))) && (!searchFilter || key.key_value.toLowerCase().includes(searchFilter))); renderTable(filteredKeys); }
         
         async function fetchAndUpdateKeys(showLoading = true) {
             if (showLoading) document.getElementById('loading-indicator').style.display = 'inline';
             try {
-                // Sửa lại cách xác thực
-                const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
-                if (!token) { clearInterval(apiInterval); window.location.href = '/admin/login'; return; }
-                
-                const response = await fetch('/api/admin/keys/all', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
+                // Trình duyệt sẽ TỰ ĐỘNG đính kèm cookie, không cần gửi Header
+                const response = await fetch('/api/admin/keys/all');
                 if (!response.ok) { if (response.status === 401 || response.status === 403) { clearInterval(apiInterval); window.location.href = '/admin/login'; } return; }
                 allKeysData = await response.json();
                 filterAndRender();
@@ -181,13 +130,9 @@
         }
         
         function resetFilters() { document.getElementById('status_filter').value = ''; document.getElementById('program_filter').value = ''; document.getElementById('search_filter').value = ''; filterAndRender(); }
-
         document.getElementById('status_filter').addEventListener('input', filterAndRender);
         document.getElementById('program_filter').addEventListener('input', filterAndRender);
         document.getElementById('search_filter').addEventListener('input', filterAndRender);
-        document.addEventListener('DOMContentLoaded', () => {
-            fetchAndUpdateKeys();
-            apiInterval = setInterval(fetchAndUpdateKeys, 15000);
-        });
+        document.addEventListener('DOMContentLoaded', () => { fetchAndUpdateKeys(); apiInterval = setInterval(fetchAndUpdateKeys, 15000); });
     </script>
 {% endblock %}

@@ -17,3 +17,12 @@ async def handle_unlock_key(key_value: str = Form(...), user_logged_in: bool = D
     
     key_service.update_key_status(db, key_value, "active")
     return RedirectResponse(url="/admin/dashboard", status_code=status.HTTP_302_FOUND)
+    # DÁN VÀO CUỐI TỆP app/routers/admin_web.py
+
+arouter.post("/admin/lock-key", response_class=RedirectResponse) # <- Lỗi ở đây
+async def handle_lock_key(key_value: str = Form(...), user_logged_in: bool = Depends(get_current_user), db: Session = Depends(get_db)):
+    # ...
+
+arouter.post("/admin/unlock-key", response_class=RedirectResponse) # <- Lỗi ở đây
+async def handle_unlock_key(key_value: str = Form(...), user_logged_in: bool = Depends(get_current_user), db: Session = Depends(get_db)):
+    # ...

@@ -1,9 +1,11 @@
 # app/routers/admin_web.py
+
 from fastapi import APIRouter, Request, Depends, Form, status, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from datetime import date
+from typing import Optional
 
 from app.services import keys as key_service
 from app.auth import get_current_user, create_access_token
@@ -13,6 +15,7 @@ from app.database import get_db
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+# --- Các hàm login, logout, dashboard giữ nguyên ---
 @router.get("/admin/login", response_class=HTMLResponse, tags=["Admin Web Interface"])
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
@@ -56,19 +59,24 @@ async def dashboard(
     request.state.is_logged_in = True 
     return templates.TemplateResponse("keys.html", {"request": request, "keys": all_keys, "filters": filters})
 
+# --- SỬA LẠI CÁC HÀM XỬ LÝ FORM ---
 @router.post("/admin/add-key", response_class=RedirectResponse, tags=["Admin Web Interface"])
 async def handle_add_key(
     key_value: str = Form(...),
     program_name: str = Form("Default"),
-    expiration_date: date = Form(None),
+    # Nhận giá trị là một chuỗi, có thể là rỗng
+    expiration_date_str: str = Form(""), 
     user_logged_in: bool = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
     if not user_logged_in:
         return RedirectResponse(url="/admin/login")
     
+    # Chỉ chuyển đổi nếu chuỗi không rỗng
+    exp_date_obj = date.fromisoformat(expiration_date_str) if expiration_date_str else None
+    
     if key_value:
-        key_service.create_key(db, key_value, program_name, expiration_date)
+        key_service.create_key(db, key_value, program_name, exp_date_obj)
     return RedirectResponse(url="/admin/dashboard", status_code=status.HTTP_302_FOUND)
 
 @router.post("/admin/bulk-add-keys", response_class=RedirectResponse, tags=["Admin Web Interface"])
@@ -76,16 +84,21 @@ async def handle_bulk_add_keys(
     quantity: int = Form(10),
     length: int = Form(20),
     program_name: str = Form("Default"),
-    expiration_date: date = Form(None),
+    # Nhận giá trị là một chuỗi, có thể là rỗng
+    expiration_date_str: str = Form(""), 
     user_logged_in: bool = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     if not user_logged_in:
         return RedirectResponse(url="/admin/login")
     
-    key_service.bulk_create_keys(db, quantity, length, program_name, expiration_date)
+    # Chỉ chuyển đổi nếu chuỗi không rỗng
+    exp_date_obj = date.fromisoformat(expiration_date_str) if expiration_date_str else None
+
+    key_service.bulk_create_keys(db, quantity, length, program_name, exp_date_obj)
     return RedirectResponse(url="/admin/dashboard", status_code=status.HTTP_302_FOUND)
 
+# --- Các hàm delete, lock, unlock giữ nguyên ---
 @router.post("/admin/delete-key", response_class=RedirectResponse, tags=["Admin Web Interface"])
 async def handle_delete_key(key_value: str = Form(...), user_logged_in: bool = Depends(get_current_user), db: Session = Depends(get_db)):
     if not user_logged_in:

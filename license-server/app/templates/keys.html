@@ -17,7 +17,8 @@
                 </div>
                 <div class="form-group">
                     <label for="expiration_date_single">Hạn dùng (để trống nếu vĩnh viễn):</label>
-                    <input type="date" name="expiration_date" id="expiration_date_single">
+                    <!-- Sửa tên 'name' thành 'expiration_date_str' -->
+                    <input type="date" name="expiration_date_str" id="expiration_date_single">
                 </div>
                 <button type="submit">Thêm Key</button>
             </form>
@@ -39,7 +40,8 @@
                 </div>
                 <div class="form-group">
                     <label for="expiration_date_bulk">Hạn dùng (để trống nếu vĩnh viễn):</label>
-                    <input type="date" name="expiration_date" id="expiration_date_bulk">
+                    <!-- Sửa tên 'name' thành 'expiration_date_str' -->
+                    <input type="date" name="expiration_date_str" id="expiration_date_bulk">
                 </div>
                 <button type="submit">Tạo Hàng Loạt</button>
             </form>
@@ -83,6 +85,8 @@
                     <th>Hạn dùng</th>
                     <th>ID Máy tính</th>
                     <th>Người dùng</th>
+                    <!-- THÊM CỘT MỚI -->
+                    <th>Số lần kích hoạt</th>
                     <th>Cảnh báo</th>
                     <th>Hành động</th>
                 </tr>
@@ -111,10 +115,12 @@
                     <td>{{ key.expiration_date.strftime('%d-%m-%Y') if key.expiration_date else 'Vĩnh viễn' }}</td>
                     <td>{{ key.machine_id or 'N/A' }}</td>
                     <td>{{ key.activated_by_user or 'N/A' }}</td>
+                    <!-- THÊM DỮ LIỆU CỘT MỚI -->
+                    <td style="text-align: center;">{{ key.failed_attempts or 0 }}</td>
                     <td>
                         {% if key.failed_attempts > 3 %}
                             <span style="color: red; font-weight: bold;">
-                                Bị chia sẻ! ({{ key.failed_attempts }} lần thử)
+                                Bị chia sẻ!
                             </span>
                         {% else %}
                             Không có
@@ -141,7 +147,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="8" style="text-align: center;">Không tìm thấy key nào khớp với bộ lọc.</td>
+                    <td colspan="9" style="text-align: center;">Không tìm thấy key nào khớp với bộ lọc.</td>
                 </tr>
                 {% endfor %}
             </tbody>

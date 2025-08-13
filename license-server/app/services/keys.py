@@ -89,3 +89,32 @@ def update_last_activated_time(db: Session, key_value: str):
         db.commit()
         db.refresh(db_key)
     return db_key
+# DÁN VÀO CUỐI TỆP app/services/keys.py
+
+def sweep_expired_keys(db: Session):
+    """
+    Quét và cập nhật trạng thái cho tất cả các key đã hết hạn.
+    Một key hết hạn là key có trạng thái 'active' hoặc 'used' và có ngày hết hạn trong quá khứ.
+    """
+
+    today = date.today()
+    
+    # Tìm tất cả các key cần được cập nhật
+    keys_to_expire = db.query(models.Key).filter(
+        models.Key.status.in_(['active', 'used']),
+        models.Key.expiration_date < today
+    ).all()
+    
+    if not keys_to_expire:
+        print("Không tìm thấy key nào để cập nhật hết hạn.")
+        return 0
+
+    # Cập nhật trạng thái của chúng
+    for key in keys_to_expire:
+        key.status = "expired"
+    
+    db.commit()
+    
+    count = len(keys_to_expire)
+    print(f"Đã cập nhật {count} key thành 'expired'.")
+    return count

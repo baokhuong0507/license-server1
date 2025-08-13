@@ -1,5 +1,4 @@
 # app/routers/admin_api.py
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -18,13 +17,13 @@ class KeyActionRequest(BaseModel):
 class AddKeyRequest(BaseModel):
     key_value: str
     program_name: str = "Default"
-    expiration_date_str: Optional[str] = None
+    expiration_date_str: Optional[str] = ""
 
 class BulkAddRequest(BaseModel):
     quantity: int = 10
     length: int = 20
     program_name: str = "Default"
-    expiration_date_str: Optional[str] = None
+    expiration_date_str: Optional[str] = ""
 
 @router.get("/keys/all", summary="Lấy danh sách tất cả keys (JSON)")
 async def get_all_keys_json(user_logged_in: bool = Depends(get_current_user), db: Session = Depends(get_db)):

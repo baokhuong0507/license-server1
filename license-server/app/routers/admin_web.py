@@ -1,16 +1,10 @@
 # app/routers/admin_web.py
-
-from fastapi import APIRouter, Request, Depends, Form, status, Query
+from fastapi import APIRouter, Request, Depends, Form, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
-from datetime import date
-from typing import Optional
 
-from app.services import keys as key_service
 from app.auth import get_current_user, create_access_token
 from app.config import settings
-from app.database import get_db
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -38,6 +32,7 @@ async def handle_logout():
 
 @router.get("/admin/dashboard", response_class=HTMLResponse, tags=["Admin Web Interface"])
 async def dashboard(request: Request, user_logged_in: bool = Depends(get_current_user)):
+    """Chỉ phục vụ trang HTML chính. Mọi dữ liệu sẽ được load bằng JavaScript."""
     if not user_logged_in:
         return RedirectResponse(url="/admin/login")
     

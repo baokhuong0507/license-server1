@@ -3,7 +3,11 @@
 {% block title %}Quản lý Keys{% endblock %}
 
 {% block content %}
-    <!-- HTML GIỮ NGUYÊN NHƯ LẦN TRƯỚC -->
+    <style>
+        .container { width: 98%; max-width: none; }
+        table { table-layout: fixed; word-wrap: break-word; }
+    </style>
+    <!-- Các form giữ nguyên -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; margin-bottom: 2rem;">
         <div>
             <h2>Thêm Key Thủ Công</h2>
@@ -64,7 +68,7 @@
         </table>
     </div>
 
-    <!-- KHỐI MÃ JAVASCRIPT ĐÃ ĐƯỢC SỬA LẠI ĐỂ DÙNG COOKIE TỰ ĐỘNG -->
+    <!-- KHỐI MÃ JAVASCRIPT ĐÃ HOÀN CHỈNH -->
     <script>
         const statusMap = { 'active': 'Sẵn dùng', 'used': 'Đã dùng', 'revoked': 'Đã khóa', 'expired': 'Hết hạn' };
         const statusColors = { 'active': 'black', 'used': 'green', 'revoked': 'orange', 'expired': 'grey' };
@@ -74,22 +78,16 @@
         function timeAgo(dateStr) { if (!dateStr) return 'Chưa dùng'; const date = new Date(dateStr); const seconds = Math.floor((new Date() - date) / 1000); if (isNaN(seconds)) return 'N/A'; let interval = seconds / 31536000; if (interval > 1) return Math.floor(interval) + " năm trước"; interval = seconds / 2592000; if (interval > 1) return Math.floor(interval) + " tháng trước"; interval = seconds / 86400; if (interval > 1) return Math.floor(interval) + " ngày trước"; interval = seconds / 3600; if (interval > 1) return Math.floor(interval) + " giờ trước"; interval = seconds / 60; if (interval > 1) return Math.floor(interval) + " phút trước"; return "Vài giây trước"; }
         function formatDate(dateStr) { if (!dateStr) return 'N/A'; const date = new Date(dateStr); const day = String(date.getDate()).padStart(2, '0'); const month = String(date.getMonth() + 1).padStart(2, '0'); const year = date.getFullYear(); return `${day}-${month}-${year}`; }
         
-        // --- HÀM QUAN TRỌNG ĐÃ ĐƯỢC SỬA LẠI ---
         async function performApiAction(endpoint, body) {
             document.getElementById('loading-indicator').style.display = 'inline';
             try {
-                // Trình duyệt sẽ TỰ ĐỘNG đính kèm cookie, không cần gửi Header Authorization
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
                 if (!response.ok) {
-                    // Nếu lỗi Unauthorized, chuyển hướng về trang login
-                    if (response.status === 401 || response.status === 403) {
-                        window.location.href = '/admin/login';
-                        return false;
-                    }
+                    if (response.status === 401 || response.status === 403) { window.location.href = '/admin/login'; return false; }
                     const error = await response.json();
                     alert(`Lỗi: ${error.detail || 'Thao tác thất bại'}`);
                     return false;
@@ -120,7 +118,6 @@
         async function fetchAndUpdateKeys(showLoading = true) {
             if (showLoading) document.getElementById('loading-indicator').style.display = 'inline';
             try {
-                // Trình duyệt sẽ TỰ ĐỘNG đính kèm cookie, không cần gửi Header
                 const response = await fetch('/api/admin/keys/all');
                 if (!response.ok) { if (response.status === 401 || response.status === 403) { clearInterval(apiInterval); window.location.href = '/admin/login'; } return; }
                 allKeysData = await response.json();

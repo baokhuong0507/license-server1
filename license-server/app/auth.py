@@ -1,5 +1,4 @@
 # app/auth.py
-
 from datetime import datetime, timedelta, timezone
 from fastapi import Request
 from jose import JWTError, jwt
@@ -21,6 +20,7 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 async def get_current_user(request: Request):
+    """Dependency này chỉ đọc token từ cookie một cách an toàn."""
     token = request.cookies.get("access_token")
     if not token:
         return None

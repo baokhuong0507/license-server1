@@ -1,16 +1,13 @@
-# Bắt buộc cho server FastAPI
 fastapi
 uvicorn
 gunicorn
-
-# Cho giao diện web (Templates)
 jinja2
 python-multipart
-
-# Cho xác thực và bảo mật (Mật khẩu & Token)
 passlib[bcrypt]
 python-jose
-
-# Cho cấu hình
 pydantic
 pydantic-settings
+
+# Thư viện cho CSDL PostgreSQL và SQLAlchemy
+SQLAlchemy
+psycopg2-binary 

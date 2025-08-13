@@ -1,17 +1,17 @@
 # app/main.py
+
 from fastapi import FastAPI, Response
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+
 from app.routers import client_api, admin_api, admin_web
 from app.database import engine
 from app import models
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Ứng dụng khởi động. LÀM MỚI CSDL: XÓA BẢNG CŨ VÀ TẠO BẢNG MỚI...")
-    # LỆNH NGUY HIỂM: Xóa tất cả các bảng đã tồn tại trong mô hình.
-    models.Base.metadata.drop_all(bind=engine)
-    # Lệnh tạo lại bảng mới với cấu trúc đúng.
+    print("Ứng dụng khởi động. Đảm bảo các bảng CSDL tồn tại...")
+    # Chỉ tạo bảng nếu chưa tồn tại. An toàn cho dữ liệu.
     models.Base.metadata.create_all(bind=engine)
     yield
     print("Ứng dụng kết thúc.")

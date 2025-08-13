@@ -72,3 +72,15 @@ async def unlock_key_api(request: KeyActionRequest, user_logged_in: bool = Depen
         raise HTTPException(status_code=401, detail="Unauthorized")
     key_service.update_key_status(db, request.key_value, "active")
     return {"status": "success"}
+# DÁN VÀO CUỐI TỆP app/routers/admin_api.py
+
+@router.post("/keys/sweep-expired", summary="Quét và cập nhật các key đã hết hạn (API)")
+async def sweep_expired_keys_api(
+    user_logged_in: bool = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    if not user_logged_in:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
+    count = key_service.sweep_expired_keys(db)
+    return {"status": "success", "message": f"Đã quét xong. {count} key được cập nhật thành 'hết hạn'."}

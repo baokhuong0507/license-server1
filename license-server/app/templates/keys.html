@@ -6,52 +6,75 @@
     <style>
         .container { width: 98%; max-width: none; }
         table { table-layout: fixed; word-wrap: break-word; }
-        /* THÊM CSS MỚI */
+        .collapsible {
+            background-color: #eee;
+            color: #444;
+            cursor: pointer;
+            padding: 18px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 1rem;
+            border-radius: 8px;
+        }
+        .collapsible:after {
+            content: '\002B'; /* plus-sign */
+            color: #777;
+            font-weight: bold;
+            float: right;
+            margin-left: 5px;
+        }
+        .collapsible.active:after {
+            content: "\2212"; /* minus-sign */
+        }
+        .content {
+            padding: 0 18px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+            background-color: #f8f9fa;
+            border-radius: 0 0 8px 8px;
+        }
         .forms-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 2rem;
             align-items: start;
-            margin-bottom: 2rem;
-            padding: 1.5rem;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-        }
-        .filters-container {
-            padding: 1.5rem;
-            background-color: #f8f9fa;
-            border-radius: 8px;
-            margin-top: 2rem;
+            padding: 1.5rem 0;
         }
     </style>
     
-    <!-- Bọc các form vào một div riêng để tạo khoảng cách -->
-    <div class="forms-grid">
-        <div>
-            <h2>Thêm Key Thủ Công</h2>
-            <div id="add-key-form">
-                <div class="form-group"><label for="key_value">Giá trị Key:</label><input type="text" id="key_value" placeholder="Nhập key thủ công..." required></div>
-                <div class="form-group"><label for="program_name_single">Tên chương trình:</label><input type="text" id="program_name_single" value="Default"></div>
-                <div class="form-group"><label for="expiration_date_single">Hạn dùng:</label><input type="date" id="expiration_date_single"></div>
-                <button type="button" onclick="addKey()">Thêm Key</button>
+    <button type="button" class="collapsible">Công cụ tạo Key</button>
+    <div class="content">
+        <div class="forms-grid">
+            <div>
+                <h2>Thêm Key Thủ Công</h2>
+                <div id="add-key-form">
+                    <div class="form-group"><label for="key_value">Giá trị Key:</label><input type="text" id="key_value" placeholder="Nhập key thủ công..." required></div>
+                    <div class="form-group"><label for="program_name_single">Tên chương trình:</label><input type="text" id="program_name_single" value="Default"></div>
+                    <div class="form-group"><label for="expiration_date_single">Hạn dùng:</label><input type="date" id="expiration_date_single"></div>
+                    <button type="button" onclick="addKey()">Thêm Key</button>
+                </div>
             </div>
-        </div>
-        <div>
-            <h2>Tạo Key Hàng Loạt</h2>
-            <div id="bulk-add-keys-form">
-                <div class="form-group"><label for="quantity">Số lượng (1-100):</label><input type="number" id="quantity" value="10" min="1" max="100"></div>
-                <div class="form-group"><label for="length">Độ dài (8-50):</label><input type="number" id="length" value="20" min="8" max="50"></div>
-                <div class="form-group"><label for="program_name_bulk">Tên chương trình:</label><input type="text" id="program_name_bulk" value="Default"></div>
-                <div class="form-group"><label for="expiration_date_bulk">Hạn dùng:</label><input type="date" id="expiration_date_bulk"></div>
-                <button type="button" onclick="bulkAddKeys()">Tạo Hàng Loạt</button>
+            <div>
+                <h2>Tạo Key Hàng Loạt</h2>
+                <div id="bulk-add-keys-form">
+                    <div class="form-group"><label for="quantity">Số lượng (1-100):</label><input type="number" id="quantity" value="10" min="1" max="100"></div>
+                    <div class="form-group"><label for="length">Độ dài (8-50):</label><input type="number" id="length" value="20" min="8" max="50"></div>
+                    <div class="form-group"><label for="program_name_bulk">Tên chương trình:</label><input type="text" id="program_name_bulk" value="Default"></div>
+                    <div class="form-group"><label for="expiration_date_bulk">Hạn dùng:</label><input type="date" id="expiration_date_bulk"></div>
+                    <button type="button" onclick="bulkAddKeys()">Tạo Hàng Loạt</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Bọc bộ lọc vào một div riêng -->
-    <div class="filters-container">
-        <h2>Bộ lọc và Tìm kiếm (Cập nhật tức thì)</h2>
-        <div style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap;">
+    <button type="button" class="collapsible active">Bộ lọc và Tìm kiếm</button>
+    <div class="content" style="max-height: 500px;"> <!-- Mặc định mở -->
+        <div style="display: flex; gap: 1rem; align-items: flex-end; padding: 1.5rem 0; flex-wrap: wrap;">
             <div>
                 <label for="status_filter">Trạng thái:</label>
                 <select id="status_filter">
@@ -74,7 +97,10 @@
         </div>
     </div>
     
-    <h2>Danh sách Keys <span id="loading-indicator" style="font-size: 0.8em; color: grey; display: none;">(Đang cập nhật...)</span></h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2rem;">
+        <h2>Danh sách Keys <span id="loading-indicator" style="font-size: 0.8em; color: grey; display: none;">(Đang cập nhật...)</span></h2>
+        <button type="button" onclick="sweepExpiredKeys()">Kiểm tra & Cập nhật Key hết hạn</button>
+    </div>
     <div style="overflow-x: auto;">
         <table id="keys-table">
             <thead>
@@ -90,6 +116,7 @@
 
     <!-- KHỐI MÃ JAVASCRIPT ĐÃ HOÀN THIỆN -->
     <script>
+        // ... (Toàn bộ các hàm JS cũ giữ nguyên) ...
         const statusMap = { 'active': 'Sẵn dùng', 'used': 'Đã dùng', 'revoked': 'Đã khóa', 'expired': 'Hết hạn' };
         const statusColors = { 'active': 'black', 'used': 'green', 'revoked': 'orange', 'expired': 'grey' };
         let allKeysData = [];
@@ -108,32 +135,40 @@
                     body: JSON.stringify(body)
                 });
                 if (!response.ok) {
-                    if (response.status === 401 || response.status === 403) { window.location.href = '/admin/login'; return false; }
+                    if (response.status === 401 || response.status === 403) { window.location.href = '/admin/login'; return {success: false}; }
                     const error = await response.json();
                     alert(`Lỗi: ${error.detail || 'Thao tác thất bại'}`);
-                    return false;
+                    return {success: false};
                 }
-                return true;
+                return {success: true, data: await response.json()};
             } catch (error) {
                 alert('Lỗi kết nối. Vui lòng thử lại.');
-                return false;
+                return {success: false};
             } finally {
                 await fetchAndUpdateKeys(false);
             }
         }
+        
+        // --- CÁC HÀM MỚI VÀ ĐÃ SỬA ---
+        async function sweepExpiredKeys() {
+            const result = await performApiAction('/api/admin/keys/sweep-expired', {});
+            if (result.success) {
+                alert(result.data.message);
+            }
+        }
 
-        async function addKey() { const key_value = document.getElementById('key_value').value; if (!key_value) { alert('Vui lòng nhập giá trị Key.'); return; } const payload = { key_value: key_value, program_name: document.getElementById('program_name_single').value, expiration_date_str: document.getElementById('expiration_date_single').value }; if (await performApiAction('/api/admin/keys/add', payload)) { document.getElementById('key_value').value = ''; } }
+        async function addKey() { const key_value = document.getElementById('key_value').value; if (!key_value) { alert('Vui lòng nhập giá trị Key.'); return; } const payload = { key_value: key_value, program_name: document.getElementById('program_name_single').value, expiration_date_str: document.getElementById('expiration_date_single').value }; if ((await performApiAction('/api/admin/keys/add', payload)).success) { document.getElementById('key_value').value = ''; } }
         async function bulkAddKeys() { if (!confirm('Bạn có chắc muốn tạo hàng loạt key?')) return; const payload = { quantity: parseInt(document.getElementById('quantity').value), length: parseInt(document.getElementById('length').value), program_name: document.getElementById('program_name_bulk').value, expiration_date_str: document.getElementById('expiration_date_bulk').value }; await performApiAction('/api/admin/keys/bulk-add', payload); }
         async function lockKey(key_value) { await performApiAction('/api/admin/keys/lock', { key_value }); }
         async function unlockKey(key_value) { await performApiAction('/api/admin/keys/unlock', { key_value }); }
         async function deleteKey(key_value) { if (confirm(`Bạn có chắc muốn xóa vĩnh viễn key "${key_value}"?`)) { await performApiAction('/api/admin/keys/delete', { key_value }); } }
         
         function renderTable(keys) {
-            scrollPosition = window.scrollY; // Lưu lại vị trí cuộn
+            scrollPosition = window.scrollY;
             const tableBody = document.getElementById('keys-table-body');
             if (keys.length === 0) { tableBody.innerHTML = `<tr><td colspan="11" style="text-align: center;">Không tìm thấy key nào.</td></tr>`; return; }
             tableBody.innerHTML = keys.map(key => `<tr><td>${key.key_value}</td><td>${key.program_name || 'N/A'}</td><td><span style="font-weight: bold; color: ${statusColors[key.status] || 'black'};">${statusMap[key.status] || key.status}</span></td><td>${formatDate(key.created_at)}</td><td>${key.expiration_date ? formatDate(key.expiration_date) : 'Vĩnh viễn'}</td><td>${key.machine_id || 'N/A'}</td><td>${key.activated_by_user || 'N/A'}</td><td style="text-align: center;">${key.failed_attempts || 0}</td><td class="last-activated">${timeAgo(key.last_activated_at)}</td><td>${key.failed_attempts > 3 ? `<span style="color: red; font-weight: bold;">Bị chia sẻ!</span>` : 'Không có'}</td><td style="display: flex; gap: 5px; flex-wrap: wrap; min-width: 180px;">${key.status === 'revoked' ? `<button type="button" onclick="unlockKey('${key.key_value}')" style="background-color: #28a745;">Mở khóa</button>` : `<button type="button" onclick="lockKey('${key.key_value}')" style="background-color: #ffc107; color: black;">Tạm khóa</button>`}<button type="button" onclick="deleteKey('${key.key_value}')" class="delete-btn">Xóa</button></td></tr>`).join('');
-            window.scrollTo(0, scrollPosition); // Khôi phục vị trí cuộn
+            window.scrollTo(0, scrollPosition);
         }
         
         function filterAndRender() { const statusFilter = document.getElementById('status_filter').value; const programFilter = document.getElementById('program_filter').value.toLowerCase(); const searchFilter = document.getElementById('search_filter').value.toLowerCase(); const filteredKeys = allKeysData.filter(key => (!statusFilter || key.status === statusFilter) && (!programFilter || (key.program_name && key.program_name.toLowerCase().includes(programFilter))) && (!searchFilter || key.key_value.toLowerCase().includes(searchFilter))); renderTable(filteredKeys); }
@@ -150,9 +185,28 @@
         }
         
         function resetFilters() { document.getElementById('status_filter').value = ''; document.getElementById('program_filter').value = ''; document.getElementById('search_filter').value = ''; filterAndRender(); }
+        
         document.getElementById('status_filter').addEventListener('input', filterAndRender);
         document.getElementById('program_filter').addEventListener('input', filterAndRender);
         document.getElementById('search_filter').addEventListener('input', filterAndRender);
-        document.addEventListener('DOMContentLoaded', () => { fetchAndUpdateKeys(); apiInterval = setInterval(fetchAndUpdateKeys, 15000); });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAndUpdateKeys();
+            apiInterval = setInterval(() => fetchAndUpdateKeys(false), 30000); // Giảm tần suất cập nhật
+
+            // Logic cho các khối có thể thu gọn/mở rộng
+            var coll = document.getElementsByClassName("collapsible");
+            for (var i = 0; i < coll.length; i++) {
+                coll[i].addEventListener("click", function() {
+                    this.classList.toggle("active");
+                    var content = this.nextElementSibling;
+                    if (content.style.maxHeight){
+                        content.style.maxHeight = null;
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    } 
+                });
+            }
+        });
     </script>
 {% endblock %}

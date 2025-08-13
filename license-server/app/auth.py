@@ -10,7 +10,7 @@ from app.config import settings
 # --- Cấu hình ---
 SECRET_KEY = settings.ADMIN_SECRET_KEY
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # Token hết hạn sau 1 ngày
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -28,28 +28,23 @@ def create_access_token(data: dict):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# --- HÀM XÁC THỰC ĐÃ ĐƯỢC SỬA LẠI HOÀN TOÀN ---
+# --- HÀM XÁC THỰC ĐÃ ĐƯỢC SỬA LẠI ---
 async def get_current_user(request: Request):
     """
-    Dependency này đọc token từ cookie, giải mã nó để xác thực người dùng.
-    Dùng cho cả giao diện web và API được gọi từ JavaScript.
+    Dependency này đọc token từ cookie (cho web) hoặc từ Header (cho API).
     """
     token = request.cookies.get("access_token")
 
-    # Nếu không có token trong cookie, thử tìm trong Header (dành cho API)
     if not token:
         auth_header = request.headers.get('Authorization')
         if auth_header and auth_header.startswith('Bearer '):
             token = auth_header.split(' ')[1]
 
-    # Nếu vẫn không có token, coi như chưa đăng nhập
     if not token:
         return None 
     
     try:
-        # Giải mã để xác thực. Nếu thành công, người dùng đã đăng nhập hợp lệ.
         jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return True 
     except JWTError:
-        # Token không hợp lệ (hết hạn, sai chữ ký, ...), coi như chưa đăng nhập
         return None

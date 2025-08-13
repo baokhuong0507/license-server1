@@ -3,7 +3,7 @@
 {% block title %}Quản lý Keys{% endblock %}
 
 {% block content %}
-    <!-- Thay đổi id và bỏ thẻ <form> -->
+    <!-- HTML GIỮ NGUYÊN NHƯ LẦN TRƯỚC -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; margin-bottom: 2rem;">
         <div>
             <h2>Thêm Key Thủ Công</h2>
@@ -28,7 +28,6 @@
     <hr style="margin: 2rem 0;">
 
     <h2>Bộ lọc và Tìm kiếm (Cập nhật tức thì)</h2>
-    <!-- ... Giữ nguyên ... -->
     <div style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap;">
         <div>
             <label for="status_filter">Trạng thái:</label>
@@ -65,7 +64,7 @@
         </table>
     </div>
 
-    <!-- KHỐI MÃ JAVASCRIPT ĐÃ NÂNG CẤP HOÀN TOÀN -->
+    <!-- KHỐI MÃ JAVASCRIPT ĐÃ SỬA LẠI HÀM PERFORM API ACTION -->
     <script>
         const statusMap = { 'active': 'Sẵn dùng', 'used': 'Đã dùng', 'revoked': 'Đã khóa', 'expired': 'Hết hạn' };
         const statusColors = { 'active': 'black', 'used': 'green', 'revoked': 'orange', 'expired': 'grey' };
@@ -75,14 +74,26 @@
         function timeAgo(dateStr) { if (!dateStr) return 'Chưa dùng'; const date = new Date(dateStr); const seconds = Math.floor((new Date() - date) / 1000); if (isNaN(seconds)) return 'N/A'; let interval = seconds / 31536000; if (interval > 1) return Math.floor(interval) + " năm trước"; interval = seconds / 2592000; if (interval > 1) return Math.floor(interval) + " tháng trước"; interval = seconds / 86400; if (interval > 1) return Math.floor(interval) + " ngày trước"; interval = seconds / 3600; if (interval > 1) return Math.floor(interval) + " giờ trước"; interval = seconds / 60; if (interval > 1) return Math.floor(interval) + " phút trước"; return "Vài giây trước"; }
         function formatDate(dateStr) { if (!dateStr) return 'N/A'; const date = new Date(dateStr); const day = String(date.getDate()).padStart(2, '0'); const month = String(date.getMonth() + 1).padStart(2, '0'); const year = date.getFullYear(); return `${day}-${month}-${year}`; }
         
+        // --- HÀM QUAN TRỌNG ĐÃ ĐƯỢC SỬA LẠI ---
         async function performApiAction(endpoint, body) {
             document.getElementById('loading-indicator').style.display = 'inline';
             try {
+                // Lấy token từ cookie
+                const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
+                if (!token) {
+                    window.location.href = '/admin/login'; // Chuyển hướng nếu không có token
+                    return false;
+                }
+
                 const response = await fetch(endpoint, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` // Gửi token trong Header Authorization
+                    },
                     body: JSON.stringify(body)
                 });
+
                 if (!response.ok) {
                     const error = await response.json();
                     alert(`Lỗi: ${error.detail || 'Thao tác thất bại'}`);
@@ -93,7 +104,8 @@
                 alert('Lỗi kết nối. Vui lòng thử lại.');
                 return false;
             } finally {
-                await fetchAndUpdateKeys(false); // Cập nhật lại bảng mà không hiện loading
+                // Cập nhật lại bảng sau mỗi hành động, dù thành công hay thất bại
+                await fetchAndUpdateKeys(false); 
             }
         }
 
@@ -106,7 +118,7 @@
                 expiration_date_str: document.getElementById('expiration_date_single').value
             };
             if (await performApiAction('/api/admin/keys/add', payload)) {
-                document.getElementById('key_value').value = '';
+                document.getElementById('key_value').value = ''; // Xóa ô nhập liệu nếu thành công
             }
         }
 
@@ -153,7 +165,14 @@
         async function fetchAndUpdateKeys(showLoading = true) {
             if (showLoading) document.getElementById('loading-indicator').style.display = 'inline';
             try {
-                const response = await fetch('/api/admin/keys/all');
+                // Sửa lại cách xác thực
+                const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
+                if (!token) { clearInterval(apiInterval); window.location.href = '/admin/login'; return; }
+                
+                const response = await fetch('/api/admin/keys/all', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
                 if (!response.ok) { if (response.status === 401 || response.status === 403) { clearInterval(apiInterval); window.location.href = '/admin/login'; } return; }
                 allKeysData = await response.json();
                 filterAndRender();

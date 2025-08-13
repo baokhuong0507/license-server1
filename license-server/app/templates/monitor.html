@@ -1,26 +1,45 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Quản lý Key</title>
-</head>
-<body>
-    <h2>Danh sách key</h2>
-    <table border="1">
-        <tr><th>Key</th><th>Trạng thái</th><th>Thiết bị</th><th>Hành động</th></tr>
-        {% for k in keys %}
-        <tr>
-            <td>{{ k.key }}</td>
-            <td>{{ k.status }}</td>
-            <td>{{ k.device }}</td>
-            <td>
-                <form method="post" action="/admin/force-unbind">
-                    <input type="hidden" name="key_id" value="{{ k.id }}">
-                    <button type="submit">Unbind</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
-    <a href="/admin/logout">Đăng xuất</a>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block content %}
+<h2>Giám sát thiết bị online</h2>
+
+<p style="margin: 0 0 12px 0">
+  <a href="/admin/keys">← Quay lại danh sách key</a> ·
+  <a href="/admin/logout">Đăng xuất</a>
+</p>
+
+{% if rows|length == 0 %}
+  <div style="padding:12px;border:1px solid #ddd;border-radius:8px;background:#f9fafb;margin:12px 0">
+    Hiện chưa có thiết bị nào online.
+    <div style="color:#666;margin-top:6px">
+      Gửi <code>POST /api/activate</code> để nhận <code>session_token</code> rồi
+      gọi <code>POST /api/heartbeat</code> với header
+      <code>Authorization: Bearer &lt;token&gt;</code>.
+    </div>
+  </div>
+{% else %}
+  <table role="grid">
+    <thead>
+      <tr><th>Key</th><th>Fingerprint</th><th>Last Seen (UTC)</th><th>Hành động</th></tr>
+    </thead>
+    <tbody>
+    {% for row in rows %}
+      <tr>
+        <td><code>{{ row.key }}</code></td>
+        <td>{{ row.fingerprint }}</td>
+        <td>{{ row.last_seen }}</td>
+        <td>
+          <form method="post" action="/admin/force-unbind/{{ row.activation_id }}">
+            <button>Force Unbind</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+
+<script>
+  // tự làm mới mỗi 5 giây
+  setTimeout(function(){ location.reload(); }, 5000);
+</script>
+{% endblock %}

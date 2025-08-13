@@ -38,12 +38,8 @@ async def handle_logout():
 
 @router.get("/admin/dashboard", response_class=HTMLResponse, tags=["Admin Web Interface"])
 async def dashboard(request: Request, user_logged_in: bool = Depends(get_current_user)):
-    """Chỉ phục vụ trang HTML chính. Mọi dữ liệu sẽ được load bằng JavaScript."""
     if not user_logged_in:
         return RedirectResponse(url="/admin/login")
     
     request.state.is_logged_in = True 
     return templates.TemplateResponse("keys.html", {"request": request})
-
-# Các endpoint xử lý form (add, bulk, delete, lock, unlock) sẽ được xử lý bằng API
-# nên chúng ta có thể xóa chúng khỏi đây để gọn gàng hơn.

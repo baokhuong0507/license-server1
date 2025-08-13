@@ -1,115 +1,43 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+# app/routers/admin_api.py
+
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
-from datetime import datetime
-from typing import Optional
 
-from app.services import keys as key_service
-from app.database import get_db
-from app.auth import get_current_user
+from ..deps import get_db
+from ..services import keys as key_service
 
-router = APIRouter()
+router = APIRouter(prefix="/admin/api", tags=["admin-api"])
 
-# --- Pydantic Models ---
-class KeyActionRequest(BaseModel):
-    key_value: str
 
-class AddKeyRequest(BaseModel):
-    key_value: str
-    program_name: str = "Default"
-    expiration_date_str: str  # Bắt buộc phải có chuỗi datetime
-
-class BulkAddRequest(BaseModel):
-    quantity: int = 10
-    length: int = 20
-    program_name: str = "Default"
-    expiration_date_str: Optional[str] = "" # Tùy chọn
-
-# --- Admin API Endpoints ---
-@router.get("/keys/all", summary="Lấy danh sách tất cả keys (JSON)")
-async def get_all_keys_json(
-    user_logged_in: bool = Depends(get_current_user), 
-    db: Session = Depends(get_db)
+@router.get("/keys")
+def get_all_keys_json(
+    status: str | None = None,
+    q: str | None = None,
+    db: Session = Depends(get_db),
 ):
-    if not user_logged_in:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    
-    all_keys = key_service.get_all_keys(db, filters={})
-    return all_keys
+    filters = {}
+    if status:
+        filters["status"] = status
+    if q:
+        filters["q"] = q
+    return {"items": key_service.get_all_keys(db, filters=filters)}
 
-@router.post("/keys/add", summary="Thêm một key mới (API)")
-async def add_new_key_api(
-    request: AddKeyRequest, 
-    user_logged_in: bool = Depends(get_current_user), 
-    db: Session = Depends(get_db)
+
+@router.post("/keys")
+def create_key_api(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
 ):
-    if not user_logged_in:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    
-    if key_service.get_key_by_value(db, request.key_value):
-        raise HTTPException(status_code=409, detail=f"Key '{request.key_value}' đã tồn tại.")
-        
     try:
-        # Chuyển đổi chuỗi datetime, nếu rỗng hoặc sai định dạng sẽ báo lỗi
-        exp_date_obj = datetime.fromisoformat(request.expiration_date_str) if request.expiration_date_str else None
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Định dạng ngày giờ không hợp lệ.")
-
-    key_service.create_key(db, request.key_value, request.program_name, exp_date_obj)
-    return {"status": "success"}
-
-@router.post("/keys/bulk-add", summary="Tạo key hàng loạt (API)")
-async def bulk_add_keys_api(
-    request: BulkAddRequest, 
-    user_logged_in: bool = Depends(get_current_user), 
-    db: Session = Depends(get_db)
-):
-    if not user_logged_in:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-        
-    try:
-        # Chuyển đổi chuỗi datetime, nếu rỗng thì là None
-        exp_date_obj = datetime.fromisoformat(request.expiration_date_str) if request.expiration_date_str else None
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Định dạng ngày giờ không hợp lệ.")
-
-    key_service.bulk_create_keys(db, request.quantity, request.length, request.program_name, exp_date_obj)
-    return {"status": "success"}
-
-@router.post("/keys/delete", summary="Xóa một key (API)")
-async def delete_key_api(
-    request: KeyActionRequest, 
-    user_logged_in: bool = Depends(get_current_user), 
-    db: Session = Depends(get_db)
-):
-    if not user_logged_in:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-        
-    success = key_service.delete_key(db, request.key_value)
-    if not success:
-        raise HTTPException(status_code=404, detail="Key không tìm thấy để xóa.")
-    return {"status": "success"}
-
-@router.post("/keys/lock", summary="Khóa một key (API)")
-async def lock_key_api(
-    request: KeyActionRequest, 
-    user_logged_in: bool = Depends(get_current_user), 
-    db: Session = Depends(get_db)
-):
-    if not user_logged_in:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-        
-    key_service.update_key_status(db, request.key_value, "revoked")
-    return {"status": "success"}
-
-@router.post("/keys/unlock", summary="Mở khóa một key (API)")
-async def unlock_key_api(
-    request: KeyActionRequest, 
-    user_logged_in: bool = Depends(get_current_user), 
-    db: Session = Depends(get_db)
-):
-    if not user_logged_in:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-        
-    key_service.update_key_status(db, request.key_value, "active")
-    return {"status": "success"}
+        key_value = (payload.get("key") or "").strip()
+        note = payload.get("note") or ""
+        offline_ttl = int(payload.get("offline_ttl_minutes") or 0)
+        return key_service.create_key(
+            db,
+            key_value=key_value,
+            note=note,
+            offline_ttl_minutes=offline_ttl,
+        )
+    except ValueError as e:
+        # Các mã lỗi gọn cho frontend: EMPTY_KEY, DUPLICATE_KEY
+        raise HTTPException(status_code=400, detail=str(e))

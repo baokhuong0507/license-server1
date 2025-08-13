@@ -1,11 +1,14 @@
 # app/services/keys.py
+
 import string
 import random
 from sqlalchemy.orm import Session
+from sqlalchemy import update
 from app import models
 from datetime import date, datetime, timezone
 
-# ... các hàm get_key_by_value, get_all_keys, create_key, bulk_create_keys, delete_key, update_key_status giữ nguyên...
+# --- Các hàm khác giữ nguyên, chỉ sửa lại hàm sweep_expired_keys ---
+
 def get_key_by_value(db: Session, key_value: str):
     return db.query(models.Key).filter(models.Key.key_value == key_value).first()
 
@@ -40,8 +43,7 @@ def bulk_create_keys(db: Session, quantity: int, length: int, program_name: str,
             expiration_date=expiration_date
         )
         db.add(db_key)
-        generated_keys.append(db_key)
-    db.commit()
+    db.commit() # Commit một lần sau khi thêm tất cả
     return generated_keys
 
 def delete_key(db: Session, key_value: str):
@@ -58,8 +60,26 @@ def update_key_status(db: Session, key_value: str, new_status: str):
         db_key.status = new_status
         db.commit()
         db.refresh(db_key)
-        return db_key
-    return None
+    return db_key
+
+def set_activation_details(db: Session, key_value: str, machine_id: str, username: str):
+    db_key = get_key_by_value(db, key_value)
+    if db_key:
+        db_key.status = "used"
+        db_key.machine_id = machine_id
+        db_key.activated_by_user = username
+        db_key.last_activated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(db_key)
+    return db_key
+
+def update_last_activated_time(db: Session, key_value: str):
+    db_key = get_key_by_value(db, key_value)
+    if db_key:
+        db_key.last_activated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(db_key)
+    return db_key
 
 def increment_failed_attempts(db: Session, key_value: str):
     db_key = get_key_by_value(db, key_value)
@@ -68,53 +88,28 @@ def increment_failed_attempts(db: Session, key_value: str):
         db_key.failed_attempts = (current_attempts or 0) + 1
         db.commit()
 
-# --- SỬA LẠI CÁC HÀM SAU ---
-def set_activation_details(db: Session, key_value: str, machine_id: str, username: str):
-    """Ghi lại thông tin khi kích hoạt lần đầu."""
-    db_key = get_key_by_value(db, key_value)
-    if db_key:
-        db_key.status = "used"
-        db_key.machine_id = machine_id
-        db_key.activated_by_user = username
-        db_key.last_activated_at = datetime.now(timezone.utc) # Cập nhật tường minh
-        db.commit()
-        db.refresh(db_key)
-    return db_key
-
-def update_last_activated_time(db: Session, key_value: str):
-    """Cập nhật thời gian khi xác thực lại."""
-    db_key = get_key_by_value(db, key_value)
-    if db_key:
-        db_key.last_activated_at = datetime.now(timezone.utc)
-        db.commit()
-        db.refresh(db_key)
-    return db_key
-# DÁN VÀO CUỐI TỆP app/services/keys.py
-
+# --- HÀM QUAN TRỌNG ĐÃ ĐƯỢC SỬA LẠI HOÀN TOÀN ---
 def sweep_expired_keys(db: Session):
     """
     Quét và cập nhật trạng thái cho tất cả các key đã hết hạn.
-    Một key hết hạn là key có trạng thái 'active' hoặc 'used' và có ngày hết hạn trong quá khứ.
+    Đây là cách làm hiệu quả với SQLAlchemy, chỉ thực hiện một câu lệnh UPDATE.
     """
-
     today = date.today()
     
-    # Tìm tất cả các key cần được cập nhật
-    keys_to_expire = db.query(models.Key).filter(
-        models.Key.status.in_(['active', 'used']),
-        models.Key.expiration_date < today
-    ).all()
+    # Tạo một câu lệnh UPDATE
+    stmt = (
+        update(models.Key)
+        .where(
+            models.Key.status.in_(['active', 'used']),
+            models.Key.expiration_date < today
+        )
+        .values(status="expired")
+    )
     
-    if not keys_to_expire:
-        print("Không tìm thấy key nào để cập nhật hết hạn.")
-        return 0
-
-    # Cập nhật trạng thái của chúng
-    for key in keys_to_expire:
-        key.status = "expired"
-    
+    # Thực thi câu lệnh và lấy số dòng đã bị ảnh hưởng
+    result = db.execute(stmt)
     db.commit()
     
-    count = len(keys_to_expire)
-    print(f"Đã cập nhật {count} key thành 'expired'.")
+    count = result.rowcount
+    print(f"Đã quét và cập nhật {count} key thành 'expired'.")
     return count

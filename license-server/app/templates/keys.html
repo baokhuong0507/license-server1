@@ -1,64 +1,42 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+
+{% block title %}Quản lý Keys{% endblock %}
+
 {% block content %}
-<p>
-  <a href="/admin/logout">Đăng xuất</a> ·
-  <a href="/admin/monitor">Giám sát online</a> ·
-  <a href="/admin/keys/export">Xuất CSV</a>
-</p>
+    <h2>Thêm Key Mới</h2>
+    <form action="/admin/add-key" method="post" style="display: flex; gap: 10px;">
+        <input type="text" name="key_value" placeholder="Nhập key mới..." required style="flex-grow: 1;">
+        <button type="submit">Thêm Key</button>
+    </form>
 
-<h3>Thêm Key</h3>
-<form method="post" action="/admin/keys">
-  <div class="grid">
-    <input name="key" placeholder="XXXX-XXXX-XXXX-XXXX" required />
-    <input name="note" placeholder="Ghi chú (tuỳ chọn)" />
-    <button type="submit">Tạo key</button>
-  </div>
-</form>
+    <hr style="margin: 2rem 0;">
 
-<h3>Danh sách key</h3>
-<form method="get" action="/admin/keys" style="margin: 0 0 1rem 0">
-  <input type="text" name="q" placeholder="Tìm theo key hoặc ghi chú" value="{{ q or '' }}" />
-  <select name="status">
-    <option value="ALL" {% if status == 'ALL' %}selected{% endif %}>Tất cả</option>
-    <option value="ACTIVE" {% if status == 'ACTIVE' %}selected{% endif %}>ACTIVE</option>
-    <option value="DISABLED" {% if status == 'DISABLED' %}selected{% endif %}>DISABLED</option>
-    <option value="TEMP_LOCKED" {% if status == 'TEMP_LOCKED' %}selected{% endif %}>TEMP_LOCKED</option>
-    <option value="DELETED" {% if status == 'DELETED' %}selected{% endif %}>DELETED</option>
-  </select>
-  <button type="submit">Lọc</button>
-</form>
-
-<table role="grid">
-  <thead>
-    <tr><th>Key</th><th>Trạng thái</th><th>Ghi chú</th><th>Hành động</th></tr>
-  </thead>
-  <tbody>
-  {% for k in keys %}
-    <tr>
-      <td><code>{{ k.key }}</code></td>
-      <td class="status {{ k.status.name }}">{{ k.status.name }}</td>
-      <td>
-        <form method="post" action="/admin/keys/{{k.id}}/update">
-          <input name="note" value="{{ k.note or '' }}" placeholder="Sửa ghi chú và Enter" />
-        </form>
-      </td>
-      <td>
-        <form style="display:inline" method="post" action="/admin/keys/{{k.id}}/enable"><button>Enable</button></form>
-        <form style="display:inline" method="post" action="/admin/keys/{{k.id}}/disable"><button>Disable</button></form>
-        <form style="display:inline" method="post" action="/admin/keys/{{k.id}}/lock"><button>Lock</button></form>
-        <form style="display:inline" method="post" action="/admin/keys/{{k.id}}/unlock"><button>Unlock</button></form>
-        <form style="display:inline" method="post" action="/admin/keys/{{k.id}}/delete"><button>Delete</button></form>
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-
-<style>
-  .status{font-weight:600}
-  .ACTIVE{color:green}
-  .DISABLED{color:#c90}
-  .TEMP_LOCKED{color:#d00}
-  .DELETED{color:#666}
-</style>
+    <h2>Danh sách Keys</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>License Key</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for key in keys %}
+            <tr>
+                <td>{{ key.key_value }}</td>
+                <td>{{ key.status }}</td>
+                <td>
+                    <form action="/admin/delete-key" method="post" onsubmit="return confirm('Bạn có chắc muốn xóa key này?');">
+                        <input type="hidden" name="key_value" value="{{ key.key_value }}">
+                        <button type="submit" class="delete-btn">Xóa</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="3" style="text-align: center;">Chưa có key nào.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 {% endblock %}

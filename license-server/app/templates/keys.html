@@ -3,56 +3,33 @@
 {% block title %}Quản lý Keys{% endblock %}
 
 {% block content %}
-    <!-- CÁC FORM GIỮ NGUYÊN -->
+    <!-- Thay đổi id và bỏ thẻ <form> -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; margin-bottom: 2rem;">
-        <!-- ... (Nội dung của hai form thêm key) ... -->
         <div>
             <h2>Thêm Key Thủ Công</h2>
-            <form action="/admin/add-key" method="post">
-                <div class="form-group">
-                    <label for="key_value">Giá trị Key:</label>
-                    <input type="text" name="key_value" id="key_value" placeholder="Nhập key thủ công..." required>
-                </div>
-                <div class="form-group">
-                    <label for="program_name_single">Tên chương trình (Mặc định: 'Default'):</label>
-                    <input type="text" name="program_name" id="program_name_single" value="Default">
-                </div>
-                <div class="form-group">
-                    <label for="expiration_date_single">Hạn dùng (để trống nếu vĩnh viễn):</label>
-                    <input type="date" name="expiration_date_str" id="expiration_date_single">
-                </div>
-                <button type="submit">Thêm Key</button>
-            </form>
+            <div id="add-key-form">
+                <div class="form-group"><label for="key_value">Giá trị Key:</label><input type="text" id="key_value" placeholder="Nhập key thủ công..." required></div>
+                <div class="form-group"><label for="program_name_single">Tên chương trình:</label><input type="text" id="program_name_single" value="Default"></div>
+                <div class="form-group"><label for="expiration_date_single">Hạn dùng:</label><input type="date" id="expiration_date_single"></div>
+                <button type="button" onclick="addKey()">Thêm Key</button>
+            </div>
         </div>
         <div>
             <h2>Tạo Key Hàng Loạt</h2>
-            <form action="/admin/bulk-add-keys" method="post">
-                <div class="form-group">
-                    <label for="quantity">Số lượng (1-100):</label>
-                    <input type="number" name="quantity" id="quantity" value="10" min="1" max="100">
-                </div>
-                <div class="form-group">
-                    <label for="length">Độ dài (8-50):</label>
-                    <input type="number" name="length" id="length" value="20" min="8" max="50">
-                </div>
-                <div class="form-group">
-                    <label for="program_name_bulk">Tên chương trình (Mặc định: 'Default'):</label>
-                    <input type="text" name="program_name" id="program_name_bulk" value="Default">
-                </div>
-                <div class="form-group">
-                    <label for="expiration_date_bulk">Hạn dùng (để trống nếu vĩnh viễn):</label>
-                    <input type="date" name="expiration_date_str" id="expiration_date_bulk">
-                </div>
-                <button type="submit">Tạo Hàng Loạt</button>
-            </form>
+            <div id="bulk-add-keys-form">
+                <div class="form-group"><label for="quantity">Số lượng (1-100):</label><input type="number" id="quantity" value="10" min="1" max="100"></div>
+                <div class="form-group"><label for="length">Độ dài (8-50):</label><input type="number" id="length" value="20" min="8" max="50"></div>
+                <div class="form-group"><label for="program_name_bulk">Tên chương trình:</label><input type="text" id="program_name_bulk" value="Default"></div>
+                <div class="form-group"><label for="expiration_date_bulk">Hạn dùng:</label><input type="date" id="expiration_date_bulk"></div>
+                <button type="button" onclick="bulkAddKeys()">Tạo Hàng Loạt</button>
+            </div>
         </div>
     </div>
     <hr style="margin: 2rem 0;">
 
     <h2>Bộ lọc và Tìm kiếm (Cập nhật tức thì)</h2>
-    <!-- Bỏ thẻ <form> -->
+    <!-- ... Giữ nguyên ... -->
     <div style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap;">
-        <!-- ... (Nội dung form lọc giữ nguyên) ... -->
         <div>
             <label for="status_filter">Trạng thái:</label>
             <select id="status_filter">
@@ -79,57 +56,74 @@
         <table id="keys-table">
             <thead>
                 <tr>
-                    <th>License Key</th>
-                    <th>Tên chương trình</th>
-                    <th>Trạng thái</th>
-                    <th>Ngày tạo</th>
-                    <th>Hạn dùng</th>
-                    <th>ID Máy tính</th>
-                    <th>Người dùng</th>
-                    <th>Số lần K.hoạt</th>
-                    <th>Lần dùng cuối</th>
-                    <th>Cảnh báo</th>
-                    <th>Hành động</th>
+                    <th>License Key</th><th>Tên chương trình</th><th>Trạng thái</th><th>Ngày tạo</th>
+                    <th>Hạn dùng</th><th>ID Máy tính</th><th>Người dùng</th><th>Số lần K.hoạt</th>
+                    <th>Lần dùng cuối</th><th>Cảnh báo</th><th>Hành động</th>
                 </tr>
             </thead>
-            <tbody id="keys-table-body">
-                <!-- Dữ liệu sẽ được chèn bởi JavaScript -->
-            </tbody>
+            <tbody id="keys-table-body"></tbody>
         </table>
     </div>
 
-    <!-- KHỐI MÃ JAVASCRIPT ĐÃ ĐƯỢC SỬA LẠI -->
+    <!-- KHỐI MÃ JAVASCRIPT ĐÃ NÂNG CẤP HOÀN TOÀN -->
     <script>
         const statusMap = { 'active': 'Sẵn dùng', 'used': 'Đã dùng', 'revoked': 'Đã khóa', 'expired': 'Hết hạn' };
         const statusColors = { 'active': 'black', 'used': 'green', 'revoked': 'orange', 'expired': 'grey' };
         let allKeysData = [];
+        let apiInterval;
 
-        function timeAgo(dateStr) {
-            if (!dateStr) return 'Chưa dùng';
-            const date = new Date(dateStr);
-            const seconds = Math.floor((new Date() - date) / 1000);
-            if (isNaN(seconds)) return 'N/A';
-            let interval = seconds / 31536000;
-            if (interval > 1) return Math.floor(interval) + " năm trước";
-            interval = seconds / 2592000;
-            if (interval > 1) return Math.floor(interval) + " tháng trước";
-            interval = seconds / 86400;
-            if (interval > 1) return Math.floor(interval) + " ngày trước";
-            interval = seconds / 3600;
-            if (interval > 1) return Math.floor(interval) + " giờ trước";
-            interval = seconds / 60;
-            if (interval > 1) return Math.floor(interval) + " phút trước";
-            return "Vài giây trước";
+        function timeAgo(dateStr) { if (!dateStr) return 'Chưa dùng'; const date = new Date(dateStr); const seconds = Math.floor((new Date() - date) / 1000); if (isNaN(seconds)) return 'N/A'; let interval = seconds / 31536000; if (interval > 1) return Math.floor(interval) + " năm trước"; interval = seconds / 2592000; if (interval > 1) return Math.floor(interval) + " tháng trước"; interval = seconds / 86400; if (interval > 1) return Math.floor(interval) + " ngày trước"; interval = seconds / 3600; if (interval > 1) return Math.floor(interval) + " giờ trước"; interval = seconds / 60; if (interval > 1) return Math.floor(interval) + " phút trước"; return "Vài giây trước"; }
+        function formatDate(dateStr) { if (!dateStr) return 'N/A'; const date = new Date(dateStr); const day = String(date.getDate()).padStart(2, '0'); const month = String(date.getMonth() + 1).padStart(2, '0'); const year = date.getFullYear(); return `${day}-${month}-${year}`; }
+        
+        async function performApiAction(endpoint, body) {
+            document.getElementById('loading-indicator').style.display = 'inline';
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (!response.ok) {
+                    const error = await response.json();
+                    alert(`Lỗi: ${error.detail || 'Thao tác thất bại'}`);
+                    return false;
+                }
+                return true;
+            } catch (error) {
+                alert('Lỗi kết nối. Vui lòng thử lại.');
+                return false;
+            } finally {
+                await fetchAndUpdateKeys(false); // Cập nhật lại bảng mà không hiện loading
+            }
         }
 
-        function formatDate(dateStr) {
-            if (!dateStr) return 'N/A';
-            const date = new Date(dateStr);
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            return `${day}-${month}-${year}`;
+        async function addKey() {
+            const key_value = document.getElementById('key_value').value;
+            if (!key_value) { alert('Vui lòng nhập giá trị Key.'); return; }
+            const payload = {
+                key_value: key_value,
+                program_name: document.getElementById('program_name_single').value,
+                expiration_date_str: document.getElementById('expiration_date_single').value
+            };
+            if (await performApiAction('/api/admin/keys/add', payload)) {
+                document.getElementById('key_value').value = '';
+            }
         }
+
+        async function bulkAddKeys() {
+            if (!confirm('Bạn có chắc muốn tạo hàng loạt key?')) return;
+            const payload = {
+                quantity: parseInt(document.getElementById('quantity').value),
+                length: parseInt(document.getElementById('length').value),
+                program_name: document.getElementById('program_name_bulk').value,
+                expiration_date_str: document.getElementById('expiration_date_bulk').value
+            };
+            await performApiAction('/api/admin/keys/bulk-add', payload);
+        }
+
+        async function lockKey(key_value) { await performApiAction('/api/admin/keys/lock', { key_value }); }
+        async function unlockKey(key_value) { await performApiAction('/api/admin/keys/unlock', { key_value }); }
+        async function deleteKey(key_value) { if (confirm(`Bạn có chắc muốn xóa vĩnh viễn key "${key_value}"?`)) { await performApiAction('/api/admin/keys/delete', { key_value }); } }
 
         function renderTable(keys) {
             const tableBody = document.getElementById('keys-table-body');
@@ -138,7 +132,7 @@
                 return;
             }
             tableBody.innerHTML = keys.map(key => `
-                <tr data-key-value="${key.key_value}">
+                <tr>
                     <td>${key.key_value}</td><td>${key.program_name || 'N/A'}</td>
                     <td><span style="font-weight: bold; color: ${statusColors[key.status] || 'black'};">${statusMap[key.status] || key.status}</span></td>
                     <td>${formatDate(key.created_at)}</td><td>${key.expiration_date ? formatDate(key.expiration_date) : 'Vĩnh viễn'}</td>
@@ -147,57 +141,34 @@
                     <td>${key.failed_attempts > 3 ? `<span style="color: red; font-weight: bold;">Bị chia sẻ!</span>` : 'Không có'}</td>
                     <td style="display: flex; gap: 5px; flex-wrap: wrap; min-width: 180px;">
                         ${key.status === 'revoked' ? 
-                            `<form action="/admin/unlock-key" method="post"><input type="hidden" name="key_value" value="${key.key_value}"><button type="submit" style="background-color: #28a745;">Mở khóa</button></form>` :
-                            `<form action="/admin/lock-key" method="post"><input type="hidden" name="key_value" value="${key.key_value}"><button type="submit" style="background-color: #ffc107; color: black;">Tạm khóa</button></form>`
+                            `<button type="button" onclick="unlockKey('${key.key_value}')" style="background-color: #28a745;">Mở khóa</button>` :
+                            `<button type="button" onclick="lockKey('${key.key_value}')" style="background-color: #ffc107; color: black;">Tạm khóa</button>`
                         }
-                        <form action="/admin/delete-key" method="post" onsubmit="return confirm('Bạn có chắc muốn xóa vĩnh viễn key này?');"><input type="hidden" name="key_value" value="${key.key_value}"><button type="submit" class="delete-btn">Xóa</button></form>
+                        <button type="button" onclick="deleteKey('${key.key_value}')" class="delete-btn">Xóa</button>
                     </td></tr>`).join('');
         }
 
-        function filterAndRender() {
-            const statusFilter = document.getElementById('status_filter').value;
-            const programFilter = document.getElementById('program_filter').value.toLowerCase();
-            const searchFilter = document.getElementById('search_filter').value.toLowerCase();
-            const filteredKeys = allKeysData.filter(key => 
-                (!statusFilter || key.status === statusFilter) &&
-                (!programFilter || (key.program_name && key.program_name.toLowerCase().includes(programFilter))) &&
-                (!searchFilter || key.key_value.toLowerCase().includes(searchFilter))
-            );
-            renderTable(filteredKeys);
-        }
-
-        async function fetchAndUpdateKeys() {
-            document.getElementById('loading-indicator').style.display = 'inline';
+        function filterAndRender() { const statusFilter = document.getElementById('status_filter').value; const programFilter = document.getElementById('program_filter').value.toLowerCase(); const searchFilter = document.getElementById('search_filter').value.toLowerCase(); const filteredKeys = allKeysData.filter(key => (!statusFilter || key.status === statusFilter) && (!programFilter || (key.program_name && key.program_name.toLowerCase().includes(programFilter))) && (!searchFilter || key.key_value.toLowerCase().includes(searchFilter))); renderTable(filteredKeys); }
+        
+        async function fetchAndUpdateKeys(showLoading = true) {
+            if (showLoading) document.getElementById('loading-indicator').style.display = 'inline';
             try {
-                // SỬA LẠI CÁCH XÁC THỰC
-                const response = await fetch('/api/admin/keys/all'); // Không cần gửi header, cookie sẽ tự động được đính kèm
-
-                if (!response.ok) {
-                    if (response.status === 401 || response.status === 403) {
-                        window.location.href = '/admin/login';
-                    }
-                    return;
-                }
+                const response = await fetch('/api/admin/keys/all');
+                if (!response.ok) { if (response.status === 401 || response.status === 403) { clearInterval(apiInterval); window.location.href = '/admin/login'; } return; }
                 allKeysData = await response.json();
                 filterAndRender();
-            } catch (error) {
-                console.error('Lỗi khi cập nhật keys:', error);
-            } finally {
-                document.getElementById('loading-indicator').style.display = 'none';
-            }
+            } catch (error) { console.error('Lỗi khi cập nhật keys:', error); } 
+            finally { if (showLoading) document.getElementById('loading-indicator').style.display = 'none'; }
         }
         
-        function resetFilters() {
-            document.getElementById('status_filter').value = '';
-            document.getElementById('program_filter').value = '';
-            document.getElementById('search_filter').value = '';
-            filterAndRender();
-        }
+        function resetFilters() { document.getElementById('status_filter').value = ''; document.getElementById('program_filter').value = ''; document.getElementById('search_filter').value = ''; filterAndRender(); }
 
-        document.getElementById('status_filter').addEventListener('change', filterAndRender);
+        document.getElementById('status_filter').addEventListener('input', filterAndRender);
         document.getElementById('program_filter').addEventListener('input', filterAndRender);
         document.getElementById('search_filter').addEventListener('input', filterAndRender);
-        document.addEventListener('DOMContentLoaded', fetchAndUpdateKeys);
-        setInterval(fetchAndUpdateKeys, 15000);
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAndUpdateKeys();
+            apiInterval = setInterval(fetchAndUpdateKeys, 15000);
+        });
     </script>
 {% endblock %}

@@ -1,15 +1,15 @@
+# app/config.py
+import os
 from pydantic_settings import BaseSettings
-class Settings(BaseSettings):
-    # ... các dòng đang có ...
-    ADMIN_EMAIL: str = "admin@example.com"
-    ADMIN_PASSWORD: str = "admin123"
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "sqlite+aiosqlite:///./data.db"
-    JWT_SECRET: str = "change_me"  # change in production
-    SESSION_TTL_MINUTES: int = 120
-    HEARTBEAT_TIMEOUT_SEC: int = 120
-    TEMP_LOCK_MINUTES: int = 30
-    OFFLINE_TTL_MINUTES: int = 0  # 0 disables offline tokens
+    # Đường dẫn đến tệp CSDL. Render sẽ cung cấp thư mục /app/data
+    DATABASE_URL: str = "sqlite:///./data/database.db"
+    
+    # Secret key để bảo vệ các API quản lý. Hãy đổi nó trên Render.
+    ADMIN_SECRET_KEY: str = os.getenv("ADMIN_SECRET_KEY", "CHANGE_THIS_SECRET_KEY")
+
+    class Config:
+        env_file = ".env" # Cho phép dùng file .env khi chạy ở local
 
 settings = Settings()

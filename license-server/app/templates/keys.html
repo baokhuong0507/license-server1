@@ -6,9 +6,27 @@
     <style>
         .container { width: 98%; max-width: none; }
         table { table-layout: fixed; word-wrap: break-word; }
+        /* THÊM CSS MỚI */
+        .forms-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: start;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .filters-container {
+            padding: 1.5rem;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 2rem;
+        }
     </style>
-    <!-- Các form giữ nguyên -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; margin-bottom: 2rem;">
+    
+    <!-- Bọc các form vào một div riêng để tạo khoảng cách -->
+    <div class="forms-grid">
         <div>
             <h2>Thêm Key Thủ Công</h2>
             <div id="add-key-form">
@@ -29,29 +47,31 @@
             </div>
         </div>
     </div>
-    <hr style="margin: 2rem 0;">
 
-    <h2>Bộ lọc và Tìm kiếm (Cập nhật tức thì)</h2>
-    <div style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap;">
-        <div>
-            <label for="status_filter">Trạng thái:</label>
-            <select id="status_filter">
-                <option value="">Tất cả</option>
-                <option value="active">Sẵn dùng</option>
-                <option value="used">Đã dùng</option>
-                <option value="revoked">Đã khóa</option>
-                <option value="expired">Hết hạn</option>
-            </select>
+    <!-- Bọc bộ lọc vào một div riêng -->
+    <div class="filters-container">
+        <h2>Bộ lọc và Tìm kiếm (Cập nhật tức thì)</h2>
+        <div style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap;">
+            <div>
+                <label for="status_filter">Trạng thái:</label>
+                <select id="status_filter">
+                    <option value="">Tất cả</option>
+                    <option value="active">Sẵn dùng</option>
+                    <option value="used">Đã dùng</option>
+                    <option value="revoked">Đã khóa</option>
+                    <option value="expired">Hết hạn</option>
+                </select>
+            </div>
+            <div>
+                <label for="program_filter">Tên chương trình:</label>
+                <input type="text" id="program_filter" placeholder="Lọc theo chương trình...">
+            </div>
+            <div>
+                <label for="search_filter">Tìm Key:</label>
+                <input type="text" id="search_filter" placeholder="Lọc theo key...">
+            </div>
+            <button onclick="resetFilters()">Reset</button>
         </div>
-        <div>
-            <label for="program_filter">Tên chương trình:</label>
-            <input type="text" id="program_filter" placeholder="Lọc theo chương trình...">
-        </div>
-        <div>
-            <label for="search_filter">Tìm Key:</label>
-            <input type="text" id="search_filter" placeholder="Lọc theo key...">
-        </div>
-        <button onclick="resetFilters()">Reset</button>
     </div>
     
     <h2>Danh sách Keys <span id="loading-indicator" style="font-size: 0.8em; color: grey; display: none;">(Đang cập nhật...)</span></h2>
@@ -68,12 +88,13 @@
         </table>
     </div>
 
-    <!-- KHỐI MÃ JAVASCRIPT ĐÃ HOÀN CHỈNH -->
+    <!-- KHỐI MÃ JAVASCRIPT ĐÃ HOÀN THIỆN -->
     <script>
         const statusMap = { 'active': 'Sẵn dùng', 'used': 'Đã dùng', 'revoked': 'Đã khóa', 'expired': 'Hết hạn' };
         const statusColors = { 'active': 'black', 'used': 'green', 'revoked': 'orange', 'expired': 'grey' };
         let allKeysData = [];
         let apiInterval;
+        let scrollPosition = 0;
 
         function timeAgo(dateStr) { if (!dateStr) return 'Chưa dùng'; const date = new Date(dateStr); const seconds = Math.floor((new Date() - date) / 1000); if (isNaN(seconds)) return 'N/A'; let interval = seconds / 31536000; if (interval > 1) return Math.floor(interval) + " năm trước"; interval = seconds / 2592000; if (interval > 1) return Math.floor(interval) + " tháng trước"; interval = seconds / 86400; if (interval > 1) return Math.floor(interval) + " ngày trước"; interval = seconds / 3600; if (interval > 1) return Math.floor(interval) + " giờ trước"; interval = seconds / 60; if (interval > 1) return Math.floor(interval) + " phút trước"; return "Vài giây trước"; }
         function formatDate(dateStr) { if (!dateStr) return 'N/A'; const date = new Date(dateStr); const day = String(date.getDate()).padStart(2, '0'); const month = String(date.getMonth() + 1).padStart(2, '0'); const year = date.getFullYear(); return `${day}-${month}-${year}`; }
@@ -108,9 +129,11 @@
         async function deleteKey(key_value) { if (confirm(`Bạn có chắc muốn xóa vĩnh viễn key "${key_value}"?`)) { await performApiAction('/api/admin/keys/delete', { key_value }); } }
         
         function renderTable(keys) {
+            scrollPosition = window.scrollY; // Lưu lại vị trí cuộn
             const tableBody = document.getElementById('keys-table-body');
             if (keys.length === 0) { tableBody.innerHTML = `<tr><td colspan="11" style="text-align: center;">Không tìm thấy key nào.</td></tr>`; return; }
             tableBody.innerHTML = keys.map(key => `<tr><td>${key.key_value}</td><td>${key.program_name || 'N/A'}</td><td><span style="font-weight: bold; color: ${statusColors[key.status] || 'black'};">${statusMap[key.status] || key.status}</span></td><td>${formatDate(key.created_at)}</td><td>${key.expiration_date ? formatDate(key.expiration_date) : 'Vĩnh viễn'}</td><td>${key.machine_id || 'N/A'}</td><td>${key.activated_by_user || 'N/A'}</td><td style="text-align: center;">${key.failed_attempts || 0}</td><td class="last-activated">${timeAgo(key.last_activated_at)}</td><td>${key.failed_attempts > 3 ? `<span style="color: red; font-weight: bold;">Bị chia sẻ!</span>` : 'Không có'}</td><td style="display: flex; gap: 5px; flex-wrap: wrap; min-width: 180px;">${key.status === 'revoked' ? `<button type="button" onclick="unlockKey('${key.key_value}')" style="background-color: #28a745;">Mở khóa</button>` : `<button type="button" onclick="lockKey('${key.key_value}')" style="background-color: #ffc107; color: black;">Tạm khóa</button>`}<button type="button" onclick="deleteKey('${key.key_value}')" class="delete-btn">Xóa</button></td></tr>`).join('');
+            window.scrollTo(0, scrollPosition); // Khôi phục vị trí cuộn
         }
         
         function filterAndRender() { const statusFilter = document.getElementById('status_filter').value; const programFilter = document.getElementById('program_filter').value.toLowerCase(); const searchFilter = document.getElementById('search_filter').value.toLowerCase(); const filteredKeys = allKeysData.filter(key => (!statusFilter || key.status === statusFilter) && (!programFilter || (key.program_name && key.program_name.toLowerCase().includes(programFilter))) && (!searchFilter || key.key_value.toLowerCase().includes(searchFilter))); renderTable(filteredKeys); }

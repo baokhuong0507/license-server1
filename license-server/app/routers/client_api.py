@@ -16,6 +16,8 @@ class KeyActivationRequest(BaseModel):
 
 # Trong tệp app/routers/client_api.py
 
+# Trong tệp app/routers/client_api.py
+
 @router.post("/activate", summary="Kích hoạt một key bản quyền")
 async def activate_license_key(request: KeyActivationRequest, db: Session = Depends(get_db)):
     key_object = key_service.get_key_by_value(db, request.key)
@@ -23,18 +25,20 @@ async def activate_license_key(request: KeyActivationRequest, db: Session = Depe
     if not key_object:
         raise HTTPException(status_code=404, detail="Key không hợp lệ hoặc không tồn tại.")
 
+    # --- SỬA LẠI LOGIC SO SÁNH NGÀY ---
+    # Hạn dùng được tính đến hết ngày đó.
     if key_object.expiration_date and key_object.expiration_date < date.today():
         if key_object.status != "expired":
             key_service.update_key_status(db, request.key, "expired")
-        raise HTTPException(status_code=403, detail="Key này đã hết hạn sử dụng.")
+        raise HTTPException(status_code=403, detail=f"Key này đã hết hạn vào ngày {key_object.expiration_date.strftime('%d-%m-%Y')}.")
 
+    # ... phần còn lại của hàm giữ nguyên ...
     if key_object.status == 'revoked':
         key_service.increment_failed_attempts(db, request.key)
         raise HTTPException(status_code=403, detail="Key này đã bị quản trị viên tạm khóa.")
 
     if key_object.status == 'used':
         if key_object.machine_id == request.machine_id:
-            # GỌI HÀM CẬP NHẬT MỚI
             key_service.update_last_activated_time(db, request.key)
             return {"status": "success", "message": "Key đã được xác thực lại trên máy này."}
         else:
@@ -42,7 +46,7 @@ async def activate_license_key(request: KeyActivationRequest, db: Session = Depe
             raise HTTPException(status_code=403, detail="Key này đã được sử dụng trên một máy tính khác.")
     
     if key_object.status == 'expired':
-        raise HTTPException(status_code=403, detail="Key này đã hết hạn sử dụng.")
+        raise HTTPException(status_code=403, detail=f"Key này đã hết hạn vào ngày {key_object.expiration_date.strftime('%d-%m-%Y')}.")
 
     if key_object.status == 'active':
         key_service.set_activation_details(

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import update
 from app import models
 from datetime import date, datetime, timezone
-
+from datetime import datetime
 # --- Các hàm khác giữ nguyên, chỉ sửa lại hàm sweep_expired_keys ---
 
 def get_key_by_value(db: Session, key_value: str):
@@ -22,7 +22,7 @@ def get_all_keys(db: Session, filters: dict):
         query = query.filter(models.Key.key_value.ilike(f'%{filters["search_key"]}%'))
     return query.order_by(models.Key.created_at.desc()).all()
 
-def create_key(db: Session, key_value: str, program_name: str, expiration_date: date | None):
+def create_key(db: Session, key_value: str, program_name: str, expiration_date: datetime | None):
     db_key = models.Key(
         key_value=key_value, 
         program_name=program_name, 
@@ -33,7 +33,7 @@ def create_key(db: Session, key_value: str, program_name: str, expiration_date: 
     db.refresh(db_key)
     return db_key
 
-def bulk_create_keys(db: Session, quantity: int, length: int, program_name: str, expiration_date: date | None):
+def bulk_create_keys(db: Session, quantity: int, length: int, program_name: str, expiration_date: datetime | None):
     generated_keys = []
     for _ in range(quantity):
         random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
@@ -43,7 +43,7 @@ def bulk_create_keys(db: Session, quantity: int, length: int, program_name: str,
             expiration_date=expiration_date
         )
         db.add(db_key)
-    db.commit() # Commit một lần sau khi thêm tất cả
+    db.commit()
     return generated_keys
 
 def delete_key(db: Session, key_value: str):

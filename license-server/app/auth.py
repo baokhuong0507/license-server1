@@ -36,16 +36,17 @@ def create_access_token(data: dict):
 
 # --- HÀM BỊ THIẾU ĐÃ ĐƯỢC THÊM VÀO ĐÂY ---
 async def get_current_user(request: Request):
-    """
-    Dependency này đọc token từ cookie, giải mã nó để xác thực người dùng.
-    Dùng cho giao diện web.
-    """
     token = request.cookies.get("access_token")
+    # THÊM ĐOẠN NÀY ĐỂ CHẤP NHẬN TOKEN TỪ HEADER
     if not token:
-        return None  # Không có token, coi như chưa đăng nhập
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+    # PHẦN CÒN LẠI GIỮ NGUYÊN
+    if not token:
+        return None
     try:
-        # Chỉ cần giải mã để xác thực, không cần dùng payload
         jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return True # Token hợp lệ, đã đăng nhập
+        return True
     except JWTError:
-        return None # Token không hợp lệ, coi như chưa đăng nhập```
+        return None

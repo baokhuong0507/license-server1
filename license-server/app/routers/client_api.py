@@ -14,6 +14,8 @@ class KeyActivationRequest(BaseModel):
     machine_id: str
     username: str
 
+# Trong tệp app/routers/client_api.py
+
 @router.post("/activate", summary="Kích hoạt một key bản quyền")
 async def activate_license_key(request: KeyActivationRequest, db: Session = Depends(get_db)):
     key_object = key_service.get_key_by_value(db, request.key)
@@ -32,8 +34,8 @@ async def activate_license_key(request: KeyActivationRequest, db: Session = Depe
 
     if key_object.status == 'used':
         if key_object.machine_id == request.machine_id:
-            # Cập nhật lại thời gian khi xác thực thành công
-            key_service.get_key_by_value(db, request.key, update_timestamp=True)
+            # GỌI HÀM CẬP NHẬT MỚI
+            key_service.update_last_activated_time(db, request.key)
             return {"status": "success", "message": "Key đã được xác thực lại trên máy này."}
         else:
             key_service.increment_failed_attempts(db, request.key)

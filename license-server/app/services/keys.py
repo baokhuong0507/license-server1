@@ -3,27 +3,20 @@ import string
 import random
 from sqlalchemy.orm import Session
 from app import models
-from datetime import date
-from datetime import datetime, timezone # Thêm import này
+from datetime import date, datetime, timezone
+
+# ... các hàm get_key_by_value, get_all_keys, create_key, bulk_create_keys, delete_key, update_key_status giữ nguyên...
 def get_key_by_value(db: Session, key_value: str):
     return db.query(models.Key).filter(models.Key.key_value == key_value).first()
 
 def get_all_keys(db: Session, filters: dict):
-    """Lấy danh sách keys với bộ lọc động."""
     query = db.query(models.Key)
-    
-    # Lọc theo trạng thái
     if filters.get("status"):
         query = query.filter(models.Key.status == filters["status"])
-        
-    # Lọc theo tên chương trình
     if filters.get("program_name"):
         query = query.filter(models.Key.program_name.ilike(f'%{filters["program_name"]}%'))
-        
-    # Tìm kiếm theo key
     if filters.get("search_key"):
         query = query.filter(models.Key.key_value.ilike(f'%{filters["search_key"]}%'))
-        
     return query.order_by(models.Key.created_at.desc()).all()
 
 def create_key(db: Session, key_value: str, program_name: str, expiration_date: date | None):
@@ -38,13 +31,9 @@ def create_key(db: Session, key_value: str, program_name: str, expiration_date: 
     return db_key
 
 def bulk_create_keys(db: Session, quantity: int, length: int, program_name: str, expiration_date: date | None):
-    """Tạo key hàng loạt."""
     generated_keys = []
     for _ in range(quantity):
-        # Tạo chuỗi key ngẫu nhiên
         random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
-        
-        # Thêm vào CSDL
         db_key = models.Key(
             key_value=random_str,
             program_name=program_name,
@@ -52,10 +41,8 @@ def bulk_create_keys(db: Session, quantity: int, length: int, program_name: str,
         )
         db.add(db_key)
         generated_keys.append(db_key)
-        
     db.commit()
     return generated_keys
-
 
 def delete_key(db: Session, key_value: str):
     db_key = get_key_by_value(db, key_value)
@@ -74,22 +61,31 @@ def update_key_status(db: Session, key_value: str, new_status: str):
         return db_key
     return None
 
-def set_activation_details(db: Session, key_value: str, machine_id: str, username: str):
-        db_key = get_key_by_value(db, key_value)
-        if db_key:
-            db_key.status = "used"
-            db_key.machine_id = machine_id
-            db_key.activated_by_user = username
-            db_key.last_activated_at = datetime.now(timezone.utc) # Cập nhật thời gian rõ ràng
-            db.commit()
-            db.refresh(db_key)
-            return db_key
-        return None
+def increment_failed_attempts(db: Session, key_value: str):
+    db_key = get_key_by_value(db, key_value)
+    if db_key:
+        current_attempts = getattr(db_key, 'failed_attempts', 0)
+        db_key.failed_attempts = (current_attempts or 0) + 1
+        db.commit()
 
-def get_key_by_value(db: Session, key_value: str, update_timestamp: bool = False):
-        db_key = db.query(models.Key).filter(models.Key.key_value == key_value).first()
-        if db_key and update_timestamp:
-            db_key.last_activated_at = datetime.now(timezone.utc)
-            db.commit()
-            db.refresh(db_key)
-        return db_key
+# --- SỬA LẠI CÁC HÀM SAU ---
+def set_activation_details(db: Session, key_value: str, machine_id: str, username: str):
+    """Ghi lại thông tin khi kích hoạt lần đầu."""
+    db_key = get_key_by_value(db, key_value)
+    if db_key:
+        db_key.status = "used"
+        db_key.machine_id = machine_id
+        db_key.activated_by_user = username
+        db_key.last_activated_at = datetime.now(timezone.utc) # Cập nhật tường minh
+        db.commit()
+        db.refresh(db_key)
+    return db_key
+
+def update_last_activated_time(db: Session, key_value: str):
+    """Cập nhật thời gian khi xác thực lại."""
+    db_key = get_key_by_value(db, key_value)
+    if db_key:
+        db_key.last_activated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(db_key)
+    return db_key

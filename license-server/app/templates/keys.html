@@ -3,7 +3,7 @@
 {% block title %}Quản lý Keys{% endblock %}
 
 {% block content %}
-    <!-- CÁC FORM GIỮ NGUYÊN -->
+    <!-- Các form giữ nguyên -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; margin-bottom: 2rem;">
         <!-- ... (Nội dung của hai form thêm key) ... -->
         <div>
@@ -48,55 +48,56 @@
         </div>
     </div>
     <hr style="margin: 2rem 0;">
-    <h2>Bộ lọc và Tìm kiếm</h2>
-    <form action="/admin/dashboard" method="get" style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap;">
-        <!-- ... (Nội dung của form lọc) ... -->
+
+    <h2>Bộ lọc và Tìm kiếm (Cập nhật tức thì)</h2>
+    <!-- Bỏ thẻ <form> -->
+    <div style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap;">
         <div>
             <label for="status_filter">Trạng thái:</label>
-            <select name="status" id="status_filter">
+            <select id="status_filter">
                 <option value="">Tất cả</option>
-                <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Sẵn dùng</option>
-                <option value="used" {% if filters.status == 'used' %}selected{% endif %}>Đã dùng</option>
-                <option value="revoked" {% if filters.status == 'revoked' %}selected{% endif %}>Đã khóa</option>
-                <option value="expired" {% if filters.status == 'expired' %}selected{% endif %}>Hết hạn</option>
+                <option value="active">Sẵn dùng</option>
+                <option value="used">Đã dùng</option>
+                <option value="revoked">Đã khóa</option>
+                <option value="expired">Hết hạn</option>
             </select>
         </div>
         <div>
             <label for="program_filter">Tên chương trình:</label>
-            <input type="text" name="program" id="program_filter" value="{{ filters.program_name or '' }}">
+            <input type="text" id="program_filter" placeholder="Lọc theo chương trình...">
         </div>
         <div>
             <label for="search_filter">Tìm Key:</label>
-            <input type="text" name="search" id="search_filter" value="{{ filters.search_key or '' }}">
+            <input type="text" id="search_filter" placeholder="Lọc theo key...">
         </div>
-        <button type="submit">Lọc</button>
-        <a href="/admin/dashboard" style="text-decoration: none; padding: 8px 12px; background: #6c757d; color: white; border-radius: 4px; line-height: 1.5;">Reset</a>
-    </form>
-    
+        <button onclick="resetFilters()">Reset</button>
+    </div>
+
     <h2>Danh sách Keys <span id="loading-indicator" style="font-size: 0.8em; color: grey; display: none;">(Đang cập nhật...)</span></h2>
     <div style="overflow-x: auto;">
-        <table id="keys-table"> <!-- Thêm ID cho bảng -->
+        <table id="keys-table">
             <thead>
                 <tr>
                     <th>License Key</th>
                     <th>Tên chương trình</th>
                     <th>Trạng thái</th>
+                    <th>Ngày tạo</th> <!-- CỘT MỚI -->
                     <th>Hạn dùng</th>
                     <th>ID Máy tính</th>
                     <th>Người dùng</th>
-                    <th>Số lần kích hoạt</th>
-                    <th>Lần dùng cuối</th> <!-- CỘT MỚI -->
+                    <th>Số lần K.hoạt</th>
+                    <th>Lần dùng cuối</th>
                     <th>Cảnh báo</th>
                     <th>Hành động</th>
                 </tr>
             </thead>
-            <tbody id="keys-table-body"> <!-- Thêm ID cho tbody -->
-                {% include 'partials/keys_table_rows.html' %} <!-- Tách nội dung bảng ra file riêng -->
+            <tbody id="keys-table-body">
+                <!-- Dữ liệu sẽ được chèn bởi JavaScript -->
             </tbody>
         </table>
     </div>
 
-    <!-- KHỐI MÃ JAVASCRIPT MỚI -->
+    <!-- KHỐI MÃ JAVASCRIPT ĐÃ NÂNG CẤP HOÀN TOÀN -->
     <script>
         const statusMap = {
             'active': 'Sẵn dùng',
@@ -104,10 +105,20 @@
             'revoked': 'Đã khóa',
             'expired': 'Hết hạn'
         };
+        const statusColors = {
+            'active': 'black',
+            'used': 'green',
+            'revoked': 'orange',
+            'expired': 'grey'
+        };
+        let allKeysData = []; // Biến toàn cục để lưu trữ tất cả dữ liệu key
 
-        function timeAgo(date) {
-            if (!date) return 'Chưa dùng';
-            const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+        function timeAgo(dateStr) {
+            if (!dateStr) return 'Chưa dùng';
+            const date = new Date(dateStr);
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (isNaN(seconds)) return 'Ngày không hợp lệ';
+
             let interval = seconds / 31536000;
             if (interval > 1) return Math.floor(interval) + " năm trước";
             interval = seconds / 2592000;
@@ -118,64 +129,109 @@
             if (interval > 1) return Math.floor(interval) + " giờ trước";
             interval = seconds / 60;
             if (interval > 1) return Math.floor(interval) + " phút trước";
-            return Math.floor(seconds) + " giây trước";
+            return "Vài giây trước";
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            const date = new Date(dateStr);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+        }
+
+        function renderTable(keys) {
+            const tableBody = document.getElementById('keys-table-body');
+            if (keys.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="11" style="text-align: center;">Không tìm thấy key nào.</td></tr>`;
+                return;
+            }
+            tableBody.innerHTML = keys.map(key => `
+                <tr data-key-value="${key.key_value}">
+                    <td>${key.key_value}</td>
+                    <td>${key.program_name || 'N/A'}</td>
+                    <td class="status">
+                        <span style="font-weight: bold; color: ${statusColors[key.status] || 'black'};">
+                            ${statusMap[key.status] || key.status}
+                        </span>
+                    </td>
+                    <td>${formatDate(key.created_at)}</td>
+                    <td>${key.expiration_date ? formatDate(key.expiration_date) : 'Vĩnh viễn'}</td>
+                    <td>${key.machine_id || 'N/A'}</td>
+                    <td>${key.activated_by_user || 'N/A'}</td>
+                    <td style="text-align: center;">${key.failed_attempts || 0}</td>
+                    <td class="last-activated">${timeAgo(key.last_activated_at)}</td>
+                    <td class="warning">
+                        ${key.failed_attempts > 3 ? `<span style="color: red; font-weight: bold;">Bị chia sẻ!</span>` : 'Không có'}
+                    </td>
+                    <td style="display: flex; gap: 5px; flex-wrap: wrap; min-width: 180px;">
+                        ${key.status === 'revoked' ? 
+                            `<form action="/admin/unlock-key" method="post"><input type="hidden" name="key_value" value="${key.key_value}"><button type="submit" style="background-color: #28a745;">Mở khóa</button></form>` :
+                            `<form action="/admin/lock-key" method="post"><input type="hidden" name="key_value" value="${key.key_value}"><button type="submit" style="background-color: #ffc107; color: black;">Tạm khóa</button></form>`
+                        }
+                        <form action="/admin/delete-key" method="post" onsubmit="return confirm('Bạn có chắc muốn xóa vĩnh viễn key này?');">
+                            <input type="hidden" name="key_value" value="${key.key_value}">
+                            <button type="submit" class="delete-btn">Xóa</button>
+                        </form>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filterAndRender() {
+            const statusFilter = document.getElementById('status_filter').value;
+            const programFilter = document.getElementById('program_filter').value.toLowerCase();
+            const searchFilter = document.getElementById('search_filter').value.toLowerCase();
+
+            const filteredKeys = allKeysData.filter(key => {
+                const matchStatus = !statusFilter || key.status === statusFilter;
+                const matchProgram = !programFilter || (key.program_name && key.program_name.toLowerCase().includes(programFilter));
+                const matchSearch = !searchFilter || key.key_value.toLowerCase().includes(searchFilter);
+                return matchStatus && matchProgram && matchSearch;
+            });
+            renderTable(filteredKeys);
         }
 
         async function fetchAndUpdateKeys() {
             document.getElementById('loading-indicator').style.display = 'inline';
             try {
-                // Lấy access token từ cookie để xác thực
-                const token = document.cookie.split('; ').find(row => row.startsWith('access_token=')).split('=')[1];
-                
+                const token = document.cookie.split('; ').find(row => row.startsWith('access_token='))?.split('=')[1];
+                if (!token) { window.location.href = '/admin/login'; return; }
+
                 const response = await fetch('/api/admin/keys/all', {
-                    headers: { 'X-Admin-Secret': token } // Dùng token thay cho secret key
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
 
-                if (response.status === 401) {
-                    // Nếu token hết hạn, chuyển hướng về trang đăng nhập
-                    window.location.href = '/admin/login';
+                if (!response.ok) {
+                    if (response.status === 401) window.location.href = '/admin/login';
                     return;
                 }
-
-                const keys = await response.json();
-                const tableBody = document.getElementById('keys-table-body');
-                
-                // Lưu lại các key đang hiển thị để so sánh
-                const currentKeys = new Set([...tableBody.querySelectorAll('tr')].map(tr => tr.dataset.keyValue));
-                const newKeys = new Set(keys.map(k => k.key_value));
-                
-                // Chỉ cập nhật nếu có sự thay đổi về số lượng key
-                if (currentKeys.size !== newKeys.size) {
-                    // Nếu có thay đổi lớn, tải lại cả trang để giữ bộ lọc
-                    window.location.reload();
-                    return;
-                }
-
-                // Cập nhật từng dòng
-                keys.forEach(key => {
-                    const row = tableBody.querySelector(`tr[data-key-value="${key.key_value}"]`);
-                    if (row) {
-                        // Cập nhật các ô có thể thay đổi
-                        row.querySelector('.status').innerHTML = `<span style="font-weight: bold; color: ${key.status === 'used' ? 'green' : (key.status === 'revoked' ? 'orange' : (key.status === 'expired' ? 'grey' : 'black'))};">${statusMap[key.status] || key.status}</span>`;
-                        row.querySelector('.last-activated').textContent = timeAgo(key.last_activated_at);
-                        row.querySelector('.failed-attempts').textContent = key.failed_attempts || 0;
-                        
-                        const warningCell = row.querySelector('.warning');
-                        if (key.failed_attempts > 3) {
-                            warningCell.innerHTML = `<span style="color: red; font-weight: bold;">Bị chia sẻ! (${key.failed_attempts} lần thử)</span>`;
-                        } else {
-                            warningCell.textContent = 'Không có';
-                        }
-                    }
-                });
+                allKeysData = await response.json();
+                filterAndRender(); // Lọc và hiển thị lại dữ liệu mới
             } catch (error) {
                 console.error('Lỗi khi cập nhật keys:', error);
             } finally {
                 document.getElementById('loading-indicator').style.display = 'none';
             }
         }
+        
+        function resetFilters() {
+            document.getElementById('status_filter').value = '';
+            document.getElementById('program_filter').value = '';
+            document.getElementById('search_filter').value = '';
+            filterAndRender();
+        }
 
-        // Tự động cập nhật mỗi 10 giây
-        setInterval(fetchAndUpdateKeys, 10000);
+        // Gắn sự kiện cho các bộ lọc
+        document.getElementById('status_filter').addEventListener('change', filterAndRender);
+        document.getElementById('program_filter').addEventListener('input', filterAndRender);
+        document.getElementById('search_filter').addEventListener('input', filterAndRender);
+
+        // Lấy dữ liệu lần đầu khi tải trang
+        document.addEventListener('DOMContentLoaded', fetchAndUpdateKeys);
+        
+        // Cập nhật dữ liệu mỗi 15 giây
+        setInterval(fetchAndUpdateKeys, 15000);
     </script>
 {% endblock %}

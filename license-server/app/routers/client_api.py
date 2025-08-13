@@ -1,5 +1,5 @@
 # app/routers/client_api.py
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from app.services import keys as key_service
 from sqlalchemy.orm import Session

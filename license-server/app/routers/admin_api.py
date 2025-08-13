@@ -1,5 +1,4 @@
 # app/routers/admin_api.py
-
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 
@@ -7,7 +6,6 @@ from ..deps import get_db
 from ..services import keys as key_service
 
 router = APIRouter(prefix="/admin/api", tags=["admin-api"])
-
 
 @router.get("/keys")
 def get_all_keys_json(
@@ -21,7 +19,6 @@ def get_all_keys_json(
     if q:
         filters["q"] = q
     return {"items": key_service.get_all_keys(db, filters=filters)}
-
 
 @router.post("/keys")
 def create_key_api(
@@ -39,5 +36,4 @@ def create_key_api(
             offline_ttl_minutes=offline_ttl,
         )
     except ValueError as e:
-        # Các mã lỗi gọn cho frontend: EMPTY_KEY, DUPLICATE_KEY
         raise HTTPException(status_code=400, detail=str(e))

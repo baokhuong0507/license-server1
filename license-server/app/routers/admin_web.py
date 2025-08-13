@@ -15,13 +15,14 @@ from app.database import get_db
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
-# --- Các hàm login, logout, dashboard giữ nguyên ---
 @router.get("/admin/login", response_class=HTMLResponse, tags=["Admin Web Interface"])
 async def login_page(request: Request):
+    """Hiển thị trang đăng nhập."""
     return templates.TemplateResponse("login.html", {"request": request})
 
 @router.post("/admin/login", response_class=HTMLResponse, tags=["Admin Web Interface"])
 async def handle_login(request: Request, password: str = Form(...)):
+    """Xử lý form đăng nhập."""
     if password != settings.ADMIN_SECRET_KEY:
         error_msg = "Mật khẩu không chính xác."
         return templates.TemplateResponse("login.html", {"request": request, "error": error_msg}, status_code=401)
@@ -33,6 +34,7 @@ async def handle_login(request: Request, password: str = Form(...)):
 
 @router.get("/admin/logout", response_class=HTMLResponse, tags=["Admin Web Interface"])
 async def handle_logout():
+    """Xử lý đăng xuất."""
     response = RedirectResponse(url="/admin/login")
     response.delete_cookie("access_token")
     return response
@@ -46,6 +48,7 @@ async def dashboard(
     program_filter: str = Query(None, alias="program"),
     search_filter: str = Query(None, alias="search")
 ):
+    """Hiển thị trang quản lý chính với bộ lọc."""
     if not user_logged_in:
         return RedirectResponse(url="/admin/login")
     
@@ -59,20 +62,18 @@ async def dashboard(
     request.state.is_logged_in = True 
     return templates.TemplateResponse("keys.html", {"request": request, "keys": all_keys, "filters": filters})
 
-# --- SỬA LẠI CÁC HÀM XỬ LÝ FORM ---
 @router.post("/admin/add-key", response_class=RedirectResponse, tags=["Admin Web Interface"])
 async def handle_add_key(
     key_value: str = Form(...),
     program_name: str = Form("Default"),
-    # Nhận giá trị là một chuỗi, có thể là rỗng
     expiration_date_str: str = Form(""), 
     user_logged_in: bool = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
+    """Xử lý việc thêm key mới."""
     if not user_logged_in:
         return RedirectResponse(url="/admin/login")
     
-    # Chỉ chuyển đổi nếu chuỗi không rỗng
     exp_date_obj = date.fromisoformat(expiration_date_str) if expiration_date_str else None
     
     if key_value:
@@ -84,23 +85,22 @@ async def handle_bulk_add_keys(
     quantity: int = Form(10),
     length: int = Form(20),
     program_name: str = Form("Default"),
-    # Nhận giá trị là một chuỗi, có thể là rỗng
     expiration_date_str: str = Form(""), 
     user_logged_in: bool = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Xử lý tạo key hàng loạt."""
     if not user_logged_in:
         return RedirectResponse(url="/admin/login")
     
-    # Chỉ chuyển đổi nếu chuỗi không rỗng
     exp_date_obj = date.fromisoformat(expiration_date_str) if expiration_date_str else None
 
     key_service.bulk_create_keys(db, quantity, length, program_name, exp_date_obj)
     return RedirectResponse(url="/admin/dashboard", status_code=status.HTTP_302_FOUND)
 
-# --- Các hàm delete, lock, unlock giữ nguyên ---
 @router.post("/admin/delete-key", response_class=RedirectResponse, tags=["Admin Web Interface"])
 async def handle_delete_key(key_value: str = Form(...), user_logged_in: bool = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Xử lý việc xóa key."""
     if not user_logged_in:
         return RedirectResponse(url="/admin/login")
     if key_value:
@@ -109,6 +109,7 @@ async def handle_delete_key(key_value: str = Form(...), user_logged_in: bool = D
 
 @router.post("/admin/lock-key", response_class=RedirectResponse, tags=["Admin Web Interface"])
 async def handle_lock_key(key_value: str = Form(...), user_logged_in: bool = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Xử lý việc khóa key."""
     if not user_logged_in:
         return RedirectResponse(url="/admin/login")
     key_service.update_key_status(db, key_value, "revoked")
@@ -116,6 +117,7 @@ async def handle_lock_key(key_value: str = Form(...), user_logged_in: bool = Dep
 
 @router.post("/admin/unlock-key", response_class=RedirectResponse, tags=["Admin Web Interface"])
 async def handle_unlock_key(key_value: str = Form(...), user_logged_in: bool = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Xử lý việc mở khóa key (trở về trạng thái active)."""
     if not user_logged_in:
         return RedirectResponse(url="/admin/login")
     key_service.update_key_status(db, key_value, "active")

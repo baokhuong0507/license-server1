@@ -1,11 +1,16 @@
+# Bắt buộc cho server FastAPI
 fastapi
-uvicorn[standard]
-sqlalchemy
-python-jose[cryptography]
+uvicorn
+gunicorn
+
+# Cho giao diện web (Templates)
 jinja2
-bcrypt
-psycopg2-binary
-pydantic-settings
 python-multipart
-starlette
-itsdangerous
+
+# Cho xác thực và bảo mật (Mật khẩu & Token)
+passlib[bcrypt]
+python-jose
+
+# Cho cấu hình
+pydantic
+pydantic-settings

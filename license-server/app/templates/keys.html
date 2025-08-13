@@ -3,76 +3,148 @@
 {% block title %}Quản lý Keys{% endblock %}
 
 {% block content %}
-    <h2>Thêm Key Mới</h2>
-    <form action="/admin/add-key" method="post" style="display: flex; gap: 10px;">
-        <input type="text" name="key_value" placeholder="Nhập key mới..." required style="flex-grow: 1;">
-        <button type="submit">Thêm Key</button>
-    </form>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; margin-bottom: 2rem;">
+        <div>
+            <h2>Thêm Key Thủ Công</h2>
+            <form action="/admin/add-key" method="post">
+                <div class="form-group">
+                    <label for="key_value">Giá trị Key:</label>
+                    <input type="text" name="key_value" id="key_value" placeholder="Nhập key thủ công..." required>
+                </div>
+                <div class="form-group">
+                    <label for="program_name_single">Tên chương trình (Mặc định: 'Default'):</label>
+                    <input type="text" name="program_name" id="program_name_single" value="Default">
+                </div>
+                <div class="form-group">
+                    <label for="expiration_date_single">Hạn dùng (để trống nếu vĩnh viễn):</label>
+                    <input type="date" name="expiration_date" id="expiration_date_single">
+                </div>
+                <button type="submit">Thêm Key</button>
+            </form>
+        </div>
+        <div>
+            <h2>Tạo Key Hàng Loạt</h2>
+            <form action="/admin/bulk-add-keys" method="post">
+                <div class="form-group">
+                    <label for="quantity">Số lượng (1-100):</label>
+                    <input type="number" name="quantity" id="quantity" value="10" min="1" max="100">
+                </div>
+                <div class="form-group">
+                    <label for="length">Độ dài (8-50):</label>
+                    <input type="number" name="length" id="length" value="20" min="8" max="50">
+                </div>
+                <div class="form-group">
+                    <label for="program_name_bulk">Tên chương trình (Mặc định: 'Default'):</label>
+                    <input type="text" name="program_name" id="program_name_bulk" value="Default">
+                </div>
+                <div class="form-group">
+                    <label for="expiration_date_bulk">Hạn dùng (để trống nếu vĩnh viễn):</label>
+                    <input type="date" name="expiration_date" id="expiration_date_bulk">
+                </div>
+                <button type="submit">Tạo Hàng Loạt</button>
+            </form>
+        </div>
+    </div>
 
     <hr style="margin: 2rem 0;">
 
+    <h2>Bộ lọc và Tìm kiếm</h2>
+    <form action="/admin/dashboard" method="get" style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap;">
+        <div>
+            <label for="status_filter">Trạng thái:</label>
+            <select name="status" id="status_filter">
+                <option value="">Tất cả</option>
+                <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Sẵn dùng</option>
+                <option value="used" {% if filters.status == 'used' %}selected{% endif %}>Đã dùng</option>
+                <option value="revoked" {% if filters.status == 'revoked' %}selected{% endif %}>Đã khóa</option>
+                <option value="expired" {% if filters.status == 'expired' %}selected{% endif %}>Hết hạn</option>
+            </select>
+        </div>
+        <div>
+            <label for="program_filter">Tên chương trình:</label>
+            <input type="text" name="program" id="program_filter" value="{{ filters.program_name or '' }}">
+        </div>
+        <div>
+            <label for="search_filter">Tìm Key:</label>
+            <input type="text" name="search" id="search_filter" value="{{ filters.search_key or '' }}">
+        </div>
+        <button type="submit">Lọc</button>
+        <a href="/admin/dashboard" style="text-decoration: none; padding: 8px 12px; background: #6c757d; color: white; border-radius: 4px; line-height: 1.5;">Reset</a>
+    </form>
+
     <h2>Danh sách Keys</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>License Key</th>
-                <th>Trạng thái</th>
-                <th>ID Máy tính</th>
-                <th>Người dùng</th>
-                <th>Cảnh báo</th>
-                <th>Hành động</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for key in keys %}
-            <tr>
-                <td>{{ key.key_value }}</td>
-                <td>
-                    <span style="font-weight: bold; color: 
-                        {% if key.status == 'used' %}green
-                        {% elif key.status == 'revoked' %}orange
-                        {% else %}black
-                        {% endif %};">
-                        {{ key.status }}
-                    </span>
-                </td>
-                <td>{{ key.machine_id or 'N/A' }}</td>
-                <td>{{ key.activated_by_user or 'N/A' }}</td>
-                <td>
-                    {% if key.failed_attempts > 3 %}
-                        <span style="color: red; font-weight: bold;">
-                            Bị chia sẻ! ({{ key.failed_attempts }} lần thử)
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>License Key</th>
+                    <th>Tên chương trình</th>
+                    <th>Trạng thái</th>
+                    <th>Hạn dùng</th>
+                    <th>ID Máy tính</th>
+                    <th>Người dùng</th>
+                    <th>Cảnh báo</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set status_map = {
+                    'active': 'Sẵn dùng',
+                    'used': 'Đã dùng',
+                    'revoked': 'Đã khóa',
+                    'expired': 'Hết hạn'
+                } %}
+                {% for key in keys %}
+                <tr>
+                    <td>{{ key.key_value }}</td>
+                    <td>{{ key.program_name or 'N/A' }}</td>
+                    <td>
+                        <span style="font-weight: bold; color: 
+                            {% if key.status == 'used' %}green
+                            {% elif key.status == 'revoked' %}orange
+                            {% elif key.status == 'expired' %}grey
+                            {% else %}black
+                            {% endif %};">
+                            {{ status_map.get(key.status, key.status) }}
                         </span>
-                    {% else %}
-                        Không có
-                    {% endif %}
-                </td>
-                <td style="display: flex; gap: 5px;">
-                    <!-- Nút Khóa/Mở Khóa -->
-                    {% if key.status == 'revoked' %}
-                        <form action="/admin/unlock-key" method="post">
+                    </td>
+                    <td>{{ key.expiration_date.strftime('%d-%m-%Y') if key.expiration_date else 'Vĩnh viễn' }}</td>
+                    <td>{{ key.machine_id or 'N/A' }}</td>
+                    <td>{{ key.activated_by_user or 'N/A' }}</td>
+                    <td>
+                        {% if key.failed_attempts > 3 %}
+                            <span style="color: red; font-weight: bold;">
+                                Bị chia sẻ! ({{ key.failed_attempts }} lần thử)
+                            </span>
+                        {% else %}
+                            Không có
+                        {% endif %}
+                    </td>
+                    <td style="display: flex; gap: 5px; flex-wrap: wrap; min-width: 180px;">
+                        {% if key.status == 'revoked' %}
+                            <form action="/admin/unlock-key" method="post">
+                                <input type="hidden" name="key_value" value="{{ key.key_value }}">
+                                <button type="submit" style="background-color: #28a745;">Mở khóa</button>
+                            </form>
+                        {% else %}
+                            <form action="/admin/lock-key" method="post">
+                                <input type="hidden" name="key_value" value="{{ key.key_value }}">
+                                <button type="submit" style="background-color: #ffc107; color: black;">Tạm khóa</button>
+                            </form>
+                        {% endif %}
+                        
+                        <form action="/admin/delete-key" method="post" onsubmit="return confirm('Bạn có chắc muốn xóa vĩnh viễn key này?');">
                             <input type="hidden" name="key_value" value="{{ key.key_value }}">
-                            <button type="submit" style="background-color: #28a745;">Mở khóa</button>
+                            <button type="submit" class="delete-btn">Xóa</button>
                         </form>
-                    {% else %}
-                        <form action="/admin/lock-key" method="post">
-                            <input type="hidden" name="key_value" value="{{ key.key_value }}">
-                            <button type="submit" style="background-color: #ffc107; color: black;">Tạm khóa</button>
-                        </form>
-                    {% endif %}
-                    
-                    <!-- Nút Xóa -->
-                    <form action="/admin/delete-key" method="post" onsubmit="return confirm('Bạn có chắc muốn xóa vĩnh viễn key này?');">
-                        <input type="hidden" name="key_value" value="{{ key.key_value }}">
-                        <button type="submit" class="delete-btn">Xóa</button>
-                    </form>
-                </td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="6" style="text-align: center;">Chưa có key nào.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center;">Không tìm thấy key nào khớp với bộ lọc.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 {% endblock %}

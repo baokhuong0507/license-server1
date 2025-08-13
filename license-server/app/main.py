@@ -7,12 +7,14 @@ from app import models
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Ứng dụng khởi động. Tạo các bảng CSDL...")
-    # Chỉ tạo bảng nếu chưa tồn tại.
+    print("Ứng dụng khởi động. XÓA BẢNG CŨ VÀ TẠO BẢNG MỚI...")
+    # LỆNH NGUY HIỂM: Xóa tất cả các bảng đã tồn tại.
+    models.Base.metadata.drop_all(bind=engine)
+    # Lệnh tạo lại bảng mới với cấu trúc đúng.
     models.Base.metadata.create_all(bind=engine)
     yield
     print("Ứng dụng kết thúc.")
-
+    
 app = FastAPI(title="License Server", lifespan=lifespan)
 
 # Mount thư mục static để phục vụ các tệp CSS, JS (nếu có)

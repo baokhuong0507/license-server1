@@ -17,6 +17,9 @@
             <tr>
                 <th>License Key</th>
                 <th>Trạng thái</th>
+                <th>ID Máy tính</th>
+                <th>Người dùng</th>
+                <th>Cảnh báo</th>
                 <th>Hành động</th>
             </tr>
         </thead>
@@ -24,9 +27,42 @@
             {% for key in keys %}
             <tr>
                 <td>{{ key.key_value }}</td>
-                <td>{{ key.status }}</td>
                 <td>
-                    <form action="/admin/delete-key" method="post" onsubmit="return confirm('Bạn có chắc muốn xóa key này?');">
+                    <span style="font-weight: bold; color: 
+                        {% if key.status == 'used' %}green
+                        {% elif key.status == 'revoked' %}orange
+                        {% else %}black
+                        {% endif %};">
+                        {{ key.status }}
+                    </span>
+                </td>
+                <td>{{ key.machine_id or 'N/A' }}</td>
+                <td>{{ key.activated_by_user or 'N/A' }}</td>
+                <td>
+                    {% if key.failed_attempts > 3 %}
+                        <span style="color: red; font-weight: bold;">
+                            Bị chia sẻ! ({{ key.failed_attempts }} lần thử)
+                        </span>
+                    {% else %}
+                        Không có
+                    {% endif %}
+                </td>
+                <td style="display: flex; gap: 5px;">
+                    <!-- Nút Khóa/Mở Khóa -->
+                    {% if key.status == 'revoked' %}
+                        <form action="/admin/unlock-key" method="post">
+                            <input type="hidden" name="key_value" value="{{ key.key_value }}">
+                            <button type="submit" style="background-color: #28a745;">Mở khóa</button>
+                        </form>
+                    {% else %}
+                        <form action="/admin/lock-key" method="post">
+                            <input type="hidden" name="key_value" value="{{ key.key_value }}">
+                            <button type="submit" style="background-color: #ffc107; color: black;">Tạm khóa</button>
+                        </form>
+                    {% endif %}
+                    
+                    <!-- Nút Xóa -->
+                    <form action="/admin/delete-key" method="post" onsubmit="return confirm('Bạn có chắc muốn xóa vĩnh viễn key này?');">
                         <input type="hidden" name="key_value" value="{{ key.key_value }}">
                         <button type="submit" class="delete-btn">Xóa</button>
                     </form>
@@ -34,7 +70,7 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="3" style="text-align: center;">Chưa có key nào.</td>
+                <td colspan="6" style="text-align: center;">Chưa có key nào.</td>
             </tr>
             {% endfor %}
         </tbody>

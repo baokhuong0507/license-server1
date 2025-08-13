@@ -1,0 +1,71 @@
+<!-- app/templates/partials/keys_table_rows.html -->
+{% set status_map = {
+    'active': 'Sẵn dùng',
+    'used': 'Đã dùng',
+    'revoked': 'Đã khóa',
+    'expired': 'Hết hạn'
+} %}
+{% for key in keys %}
+<!-- Thêm data-key-value để JavaScript có thể tìm thấy dòng này -->
+<tr data-key-value="{{ key.key_value }}">
+    <td>{{ key.key_value }}</td>
+    <td>{{ key.program_name or 'N/A' }}</td>
+    <td class="status">
+        <span style="font-weight: bold; color: 
+            {% if key.status == 'used' %}green
+            {% elif key.status == 'revoked' %}orange
+            {% elif key.status == 'expired' %}grey
+            {% else %}black
+            {% endif %};">
+            {{ status_map.get(key.status, key.status) }}
+        </span>
+    </td>
+    <td>{{ key.expiration_date.strftime('%d-%m-%Y') if key.expiration_date else 'Vĩnh viễn' }}</td>
+    <td>{{ key.machine_id or 'N/A' }}</td>
+    <td>{{ key.activated_by_user or 'N/A' }}</td>
+    <td class="failed-attempts" style="text-align: center;">{{ key.failed_attempts or 0 }}</td>
+    <!-- Thêm class để JavaScript dễ dàng cập nhật -->
+    <td class="last-activated">
+        {% if key.last_activated_at %}
+            <script>
+                // Dùng JS để hiển thị thời gian tương đối ngay khi tải trang
+                document.write(timeAgo("{{ key.last_activated_at.isoformat() }}"));
+            </script>
+        {% else %}
+            Chưa dùng
+        {% endif %}
+    </td>
+    <td class="warning">
+        {% if key.failed_attempts > 3 %}
+            <span style="color: red; font-weight: bold;">
+                Bị chia sẻ! ({{ key.failed_attempts }} lần thử)
+            </span>
+        {% else %}
+            Không có
+        {% endif %}
+    </td>
+    <td style="display: flex; gap: 5px; flex-wrap: wrap; min-width: 180px;">
+        <!-- Các form hành động giữ nguyên -->
+        {% if key.status == 'revoked' %}
+            <form action="/admin/unlock-key" method="post">
+                <input type="hidden" name="key_value" value="{{ key.key_value }}">
+                <button type="submit" style="background-color: #28a745;">Mở khóa</button>
+            </form>
+        {% else %}
+            <form action="/admin/lock-key" method="post">
+                <input type="hidden" name="key_value" value="{{ key.key_value }}">
+                <button type="submit" style="background-color: #ffc107; color: black;">Tạm khóa</button>
+            </form>
+        {% endif %}
+        
+        <form action="/admin/delete-key" method="post" onsubmit="return confirm('Bạn có chắc muốn xóa vĩnh viễn key này?');">
+            <input type="hidden" name="key_value" value="{{ key.key_value }}">
+            <button type="submit" class="delete-btn">Xóa</button>
+        </form>
+    </td>
+</tr>
+{% else %}
+<tr>
+    <td colspan="10" style="text-align: center;">Không tìm thấy key nào khớp với bộ lọc.</td>
+</tr>
+{% endfor %}

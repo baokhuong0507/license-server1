@@ -3,7 +3,9 @@
 {% block title %}Quản lý Keys{% endblock %}
 
 {% block content %}
+    <!-- CÁC FORM GIỮ NGUYÊN -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start; margin-bottom: 2rem;">
+        <!-- ... (Nội dung của hai form thêm key) ... -->
         <div>
             <h2>Thêm Key Thủ Công</h2>
             <form action="/admin/add-key" method="post">
@@ -17,7 +19,6 @@
                 </div>
                 <div class="form-group">
                     <label for="expiration_date_single">Hạn dùng (để trống nếu vĩnh viễn):</label>
-                    <!-- Sửa tên 'name' thành 'expiration_date_str' -->
                     <input type="date" name="expiration_date_str" id="expiration_date_single">
                 </div>
                 <button type="submit">Thêm Key</button>
@@ -40,18 +41,16 @@
                 </div>
                 <div class="form-group">
                     <label for="expiration_date_bulk">Hạn dùng (để trống nếu vĩnh viễn):</label>
-                    <!-- Sửa tên 'name' thành 'expiration_date_str' -->
                     <input type="date" name="expiration_date_str" id="expiration_date_bulk">
                 </div>
                 <button type="submit">Tạo Hàng Loạt</button>
             </form>
         </div>
     </div>
-
     <hr style="margin: 2rem 0;">
-
     <h2>Bộ lọc và Tìm kiếm</h2>
     <form action="/admin/dashboard" method="get" style="display: flex; gap: 1rem; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap;">
+        <!-- ... (Nội dung của form lọc) ... -->
         <div>
             <label for="status_filter">Trạng thái:</label>
             <select name="status" id="status_filter">
@@ -73,10 +72,10 @@
         <button type="submit">Lọc</button>
         <a href="/admin/dashboard" style="text-decoration: none; padding: 8px 12px; background: #6c757d; color: white; border-radius: 4px; line-height: 1.5;">Reset</a>
     </form>
-
-    <h2>Danh sách Keys</h2>
+    
+    <h2>Danh sách Keys <span id="loading-indicator" style="font-size: 0.8em; color: grey; display: none;">(Đang cập nhật...)</span></h2>
     <div style="overflow-x: auto;">
-        <table>
+        <table id="keys-table"> <!-- Thêm ID cho bảng -->
             <thead>
                 <tr>
                     <th>License Key</th>
@@ -85,72 +84,98 @@
                     <th>Hạn dùng</th>
                     <th>ID Máy tính</th>
                     <th>Người dùng</th>
-                    <!-- THÊM CỘT MỚI -->
                     <th>Số lần kích hoạt</th>
+                    <th>Lần dùng cuối</th> <!-- CỘT MỚI -->
                     <th>Cảnh báo</th>
                     <th>Hành động</th>
                 </tr>
             </thead>
-            <tbody>
-                {% set status_map = {
-                    'active': 'Sẵn dùng',
-                    'used': 'Đã dùng',
-                    'revoked': 'Đã khóa',
-                    'expired': 'Hết hạn'
-                } %}
-                {% for key in keys %}
-                <tr>
-                    <td>{{ key.key_value }}</td>
-                    <td>{{ key.program_name or 'N/A' }}</td>
-                    <td>
-                        <span style="font-weight: bold; color: 
-                            {% if key.status == 'used' %}green
-                            {% elif key.status == 'revoked' %}orange
-                            {% elif key.status == 'expired' %}grey
-                            {% else %}black
-                            {% endif %};">
-                            {{ status_map.get(key.status, key.status) }}
-                        </span>
-                    </td>
-                    <td>{{ key.expiration_date.strftime('%d-%m-%Y') if key.expiration_date else 'Vĩnh viễn' }}</td>
-                    <td>{{ key.machine_id or 'N/A' }}</td>
-                    <td>{{ key.activated_by_user or 'N/A' }}</td>
-                    <!-- THÊM DỮ LIỆU CỘT MỚI -->
-                    <td style="text-align: center;">{{ key.failed_attempts or 0 }}</td>
-                    <td>
-                        {% if key.failed_attempts > 3 %}
-                            <span style="color: red; font-weight: bold;">
-                                Bị chia sẻ!
-                            </span>
-                        {% else %}
-                            Không có
-                        {% endif %}
-                    </td>
-                    <td style="display: flex; gap: 5px; flex-wrap: wrap; min-width: 180px;">
-                        {% if key.status == 'revoked' %}
-                            <form action="/admin/unlock-key" method="post">
-                                <input type="hidden" name="key_value" value="{{ key.key_value }}">
-                                <button type="submit" style="background-color: #28a745;">Mở khóa</button>
-                            </form>
-                        {% else %}
-                            <form action="/admin/lock-key" method="post">
-                                <input type="hidden" name="key_value" value="{{ key.key_value }}">
-                                <button type="submit" style="background-color: #ffc107; color: black;">Tạm khóa</button>
-                            </form>
-                        {% endif %}
-                        
-                        <form action="/admin/delete-key" method="post" onsubmit="return confirm('Bạn có chắc muốn xóa vĩnh viễn key này?');">
-                            <input type="hidden" name="key_value" value="{{ key.key_value }}">
-                            <button type="submit" class="delete-btn">Xóa</button>
-                        </form>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="9" style="text-align: center;">Không tìm thấy key nào khớp với bộ lọc.</td>
-                </tr>
-                {% endfor %}
+            <tbody id="keys-table-body"> <!-- Thêm ID cho tbody -->
+                {% include 'partials/keys_table_rows.html' %} <!-- Tách nội dung bảng ra file riêng -->
             </tbody>
         </table>
     </div>
+
+    <!-- KHỐI MÃ JAVASCRIPT MỚI -->
+    <script>
+        const statusMap = {
+            'active': 'Sẵn dùng',
+            'used': 'Đã dùng',
+            'revoked': 'Đã khóa',
+            'expired': 'Hết hạn'
+        };
+
+        function timeAgo(date) {
+            if (!date) return 'Chưa dùng';
+            const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+            let interval = seconds / 31536000;
+            if (interval > 1) return Math.floor(interval) + " năm trước";
+            interval = seconds / 2592000;
+            if (interval > 1) return Math.floor(interval) + " tháng trước";
+            interval = seconds / 86400;
+            if (interval > 1) return Math.floor(interval) + " ngày trước";
+            interval = seconds / 3600;
+            if (interval > 1) return Math.floor(interval) + " giờ trước";
+            interval = seconds / 60;
+            if (interval > 1) return Math.floor(interval) + " phút trước";
+            return Math.floor(seconds) + " giây trước";
+        }
+
+        async function fetchAndUpdateKeys() {
+            document.getElementById('loading-indicator').style.display = 'inline';
+            try {
+                // Lấy access token từ cookie để xác thực
+                const token = document.cookie.split('; ').find(row => row.startsWith('access_token=')).split('=')[1];
+                
+                const response = await fetch('/api/admin/keys/all', {
+                    headers: { 'X-Admin-Secret': token } // Dùng token thay cho secret key
+                });
+
+                if (response.status === 401) {
+                    // Nếu token hết hạn, chuyển hướng về trang đăng nhập
+                    window.location.href = '/admin/login';
+                    return;
+                }
+
+                const keys = await response.json();
+                const tableBody = document.getElementById('keys-table-body');
+                
+                // Lưu lại các key đang hiển thị để so sánh
+                const currentKeys = new Set([...tableBody.querySelectorAll('tr')].map(tr => tr.dataset.keyValue));
+                const newKeys = new Set(keys.map(k => k.key_value));
+                
+                // Chỉ cập nhật nếu có sự thay đổi về số lượng key
+                if (currentKeys.size !== newKeys.size) {
+                    // Nếu có thay đổi lớn, tải lại cả trang để giữ bộ lọc
+                    window.location.reload();
+                    return;
+                }
+
+                // Cập nhật từng dòng
+                keys.forEach(key => {
+                    const row = tableBody.querySelector(`tr[data-key-value="${key.key_value}"]`);
+                    if (row) {
+                        // Cập nhật các ô có thể thay đổi
+                        row.querySelector('.status').innerHTML = `<span style="font-weight: bold; color: ${key.status === 'used' ? 'green' : (key.status === 'revoked' ? 'orange' : (key.status === 'expired' ? 'grey' : 'black'))};">${statusMap[key.status] || key.status}</span>`;
+                        row.querySelector('.last-activated').textContent = timeAgo(key.last_activated_at);
+                        row.querySelector('.failed-attempts').textContent = key.failed_attempts || 0;
+                        
+                        const warningCell = row.querySelector('.warning');
+                        if (key.failed_attempts > 3) {
+                            warningCell.innerHTML = `<span style="color: red; font-weight: bold;">Bị chia sẻ! (${key.failed_attempts} lần thử)</span>`;
+                        } else {
+                            warningCell.textContent = 'Không có';
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Lỗi khi cập nhật keys:', error);
+            } finally {
+                document.getElementById('loading-indicator').style.display = 'none';
+            }
+        }
+
+        // Tự động cập nhật mỗi 10 giây
+        setInterval(fetchAndUpdateKeys, 10000);
+    </script>
 {% endblock %}

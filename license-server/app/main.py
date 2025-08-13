@@ -8,8 +8,7 @@ from app import models
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print("Ứng dụng khởi động. XÓA BẢNG CŨ VÀ TẠO BẢNG MỚI...")
-    # LỆNH NGUY HIỂM: Xóa tất cả các bảng đã tồn tại.
-    models.Base.metadata.drop_all(bind=engine)
+     models.Base.metadata.drop_all(bind=engine)
     # Lệnh tạo lại bảng mới với cấu trúc đúng.
     models.Base.metadata.create_all(bind=engine)
     yield

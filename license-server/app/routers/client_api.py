@@ -32,6 +32,8 @@ async def activate_license_key(request: KeyActivationRequest, db: Session = Depe
 
     if key_object.status == 'used':
         if key_object.machine_id == request.machine_id:
+            # Cập nhật lại thời gian khi xác thực thành công
+            key_service.get_key_by_value(db, request.key, update_timestamp=True)
             return {"status": "success", "message": "Key đã được xác thực lại trên máy này."}
         else:
             key_service.increment_failed_attempts(db, request.key)
@@ -50,3 +52,4 @@ async def activate_license_key(request: KeyActivationRequest, db: Session = Depe
         return {"status": "success", "message": "Kích hoạt thành công!"}
 
     raise HTTPException(status_code=400, detail=f"Không thể kích hoạt key với trạng thái '{key_object.status}'.")
+    

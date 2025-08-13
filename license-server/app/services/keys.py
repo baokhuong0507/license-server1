@@ -4,7 +4,7 @@ import random
 from sqlalchemy.orm import Session
 from app import models
 from datetime import date
-
+from datetime import datetime, timezone # Thêm import này
 def get_key_by_value(db: Session, key_value: str):
     return db.query(models.Key).filter(models.Key.key_value == key_value).first()
 
@@ -75,20 +75,21 @@ def update_key_status(db: Session, key_value: str, new_status: str):
     return None
 
 def set_activation_details(db: Session, key_value: str, machine_id: str, username: str):
-    db_key = get_key_by_value(db, key_value)
-    if db_key:
-        db_key.status = "used"
-        db_key.machine_id = machine_id
-        db_key.activated_by_user = username
-        db.commit()
-        db.refresh(db_key)
-        return db_key
-    return None
+        db_key = get_key_by_value(db, key_value)
+        if db_key:
+            db_key.status = "used"
+            db_key.machine_id = machine_id
+            db_key.activated_by_user = username
+            db_key.last_activated_at = datetime.now(timezone.utc) # Cập nhật thời gian rõ ràng
+            db.commit()
+            db.refresh(db_key)
+            return db_key
+        return None
 
-def increment_failed_attempts(db: Session, key_value: str):
-    db_key = get_key_by_value(db, key_value)
-    if db_key:
-        # Dùng getattr để tránh lỗi nếu cột không tồn tại ở phiên bản CSDL cũ
-        current_attempts = getattr(db_key, 'failed_attempts', 0)
-        db_key.failed_attempts = (current_attempts or 0) + 1
-        db.commit()
+def get_key_by_value(db: Session, key_value: str, update_timestamp: bool = False):
+        db_key = db.query(models.Key).filter(models.Key.key_value == key_value).first()
+        if db_key and update_timestamp:
+            db_key.last_activated_at = datetime.now(timezone.utc)
+            db.commit()
+            db.refresh(db_key)
+        return db_key

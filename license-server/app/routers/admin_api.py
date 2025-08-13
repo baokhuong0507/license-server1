@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from typing import Annotated
 from sqlalchemy.orm import Session
-
+from app.auth import get_current_user
 from app.config import settings
 from app.services import keys as key_service
 from app.database import get_db
@@ -42,3 +42,9 @@ async def check_key_status(key_value: str, db: Session = Depends(get_db)):
     if not key_object:
         raise HTTPException(status_code=404, detail="Key không tìm thấy.")
     return {"key": key_object.key_value, "status": key_object.status}
+@router.get("/keys/all", summary="Lấy danh sách tất cả keys (JSON)")
+async def get_all_keys_json(user_logged_in: bool = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not user_logged_in:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    all_keys = key_service.get_all_keys(db, filters={})
+    return all_keys

@@ -2,7 +2,7 @@
 from sqlalchemy import Column, String, DateTime, Integer, Date
 from sqlalchemy.sql import func
 from app.database import Base
-
+from sqlalchemy import func
 class Key(Base):
     __tablename__ = "keys"
 
@@ -13,7 +13,7 @@ class Key(Base):
     machine_id = Column(String, nullable=True)
     activated_by_user = Column(String, nullable=True)
     failed_attempts = Column(Integer, default=0)
-
+    last_activated_at = Column(DateTime(timezone=True), nullable=True, onupdate=func.now())
     # --- CÁC CỘT MỚI ---
     # Tên chương trình mà key này thuộc về
     program_name = Column(String, nullable=True, index=True, default="Default")

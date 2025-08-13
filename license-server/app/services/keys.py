@@ -17,7 +17,8 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS keys (
             key_value TEXT PRIMARY KEY NOT NULL,
-            status TEXT NOT NULL DEFAULT 'active'
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
         )
     ''')
     conn.commit()

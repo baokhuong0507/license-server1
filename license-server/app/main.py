@@ -4,21 +4,21 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-# ✅ Sửa đúng đường import model
-from license_server.app.models import Base, User, LicenseKey, KeyStatus
-from license_server.app.deps import engine, get_db
-from license_server.app.routers.client_api import router as client_api_router
-from license_server.app.services.keys import set_key_status
+# ✅ Sử dụng lại import TƯƠNG ĐỐI ĐÚNG theo layout repo hiện tại
+from .models import Base, User, LicenseKey, KeyStatus
+from .deps import engine, get_db
+from .routers.client_api import router as client_api_router
+from .services.keys import set_key_status
 
 import bcrypt
 
 app = FastAPI(title="License Server")
 
-# Mount static (nếu có folder app/static)
+# Mount static
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
-# Tạo bảng và admin mặc định khi khởi động
+# Tạo bảng khi khởi động
 Base.metadata.create_all(bind=engine)
 
 def ensure_admin(db: Session):
@@ -34,7 +34,7 @@ async def startup_event():
     with next(get_db()) as db:
         ensure_admin(db)
 
-# ============ Giao diện quản trị ==============
+# ================== ADMIN UI ==================
 
 @app.get("/admin/keys", response_class=HTMLResponse)
 def admin_keys(request: Request, db: Session = Depends(get_db)):
@@ -46,7 +46,11 @@ def admin_keys(request: Request, db: Session = Depends(get_db)):
     })
 
 @app.post("/admin/keys")
-async def create_key(key: str = Form(...), note: str = Form(""), db: Session = Depends(get_db)):
+async def create_key(
+    key: str = Form(...),
+    note: str = Form(""),
+    db: Session = Depends(get_db)
+):
     k = LicenseKey(key=key, note=note)
     db.add(k)
     db.commit()
@@ -82,10 +86,10 @@ async def key_delete(key_id: str, db: Session = Depends(get_db)):
     set_key_status(db, k, KeyStatus.DELETED)
     return RedirectResponse(url="/admin/keys", status_code=303)
 
-# Gắn router client (API phía client)
+# Mount client API
 app.include_router(client_api_router)
 
-# (tuỳ chọn) route gốc để kiểm tra sống
+# (khuyến nghị) route health check
 @app.get("/")
 def root():
     return {"ok": True, "service": "license-server"}

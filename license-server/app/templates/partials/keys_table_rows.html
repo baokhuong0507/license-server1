@@ -1,26 +1,24 @@
-<!-- app/templates/partials/keys_table_rows.html -->
-
-<!-- 
-    Tệp này sẽ được render với một biến ngữ cảnh tên là 'key'.
-    Nó sẽ tạo ra một hàng <tr> cho bảng.
--->
+<!-- Mỗi hàng (tr) có một ID duy nhất để HTMX có thể nhắm mục tiêu -->
 <tr id="key-row-{{ key.id }}">
     <td>{{ key.id }}</td>
     <td><code>{{ key.key }}</code></td>
     <td>
         {% if key.status == 'unused' %}
-        <span class="tag is-light">Unused</span>
+            <span class="tag is-light">Unused</span>
         {% elif key.status == 'active' %}
-        <span class="tag is-success">Active</span>
+            <span class="tag is-success">Active</span>
         {% elif key.status == 'expired' %}
-        <span class="tag is-danger">Expired</span>
+            <span class="tag is-danger">Expired</span>
         {% else %}
-        <span class="tag">{{ key.status }}</span>
+            <span class="tag">{{ key.status }}</span>
         {% endif %}
     </td>
-    <td>{{ key.expiry_date.strftime('%Y-%m-%d %H:%M') if key.expiry_date else 'N/A' }}</td>
-    <td style="text-align: center;">
-        <!-- Nút này chỉ hiển thị khi key chưa được sử dụng -->
+    <td>
+        <!-- Định dạng ngày giờ cho dễ đọc, nếu không có thì hiển thị 'N/A' -->
+        {{ key.expiry_date.strftime('%Y-%m-%d %H:%M UTC') if key.expiry_date else 'N/A' }}
+    </td>
+    <td class="has-text-centered">
+        <!-- Nút Kích hoạt: chỉ hiển thị khi key ở trạng thái 'unused' -->
         {% if key.status == 'unused' %}
         <button 
             class="button is-small is-info"
@@ -31,5 +29,15 @@
             Activate
         </button>
         {% endif %}
+
+        <!-- Nút Xóa -->
+        <button 
+            class="button is-small is-danger"
+            hx-delete="/admin/keys/{{ key.id }}"
+            hx-target="closest tr"
+            hx-swap="outerHTML"
+            hx-confirm="Are you sure you want to delete this key?">
+            Delete
+        </button>
     </td>
 </tr>

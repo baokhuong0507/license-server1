@@ -1,80 +1,86 @@
 # app/services/keys.py
-# Bản an toàn: import các lớp từ models NGAY BÊN TRONG HÀM
-# để tránh tình huống module app.models chưa khởi tạo xong.
 
-from typing import Optional, Dict, Any, List
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
+from .. import models
+
+def check_and_update_all_keys_status(db: Session):
+    """
+    Hàm này sẽ kiểm tra và cập nhật trạng thái của tất cả các key.
+    Nó sẽ chạy mỗi khi trang quản lý được tải.
+    --> Đây là giải pháp cho vấn đề #1.
+    """
+    now = datetime.now(timezone.utc)
+    
+    # Lấy TẤT CẢ các key chưa bị đánh dấu là 'expired'
+    keys_to_check = db.query(models.Key).filter(models.Key.status != 'expired').all()
+    
+    # Biến này để kiểm tra xem có thay đổi nào trong DB không
+    needs_commit = False
+    for key in keys_to_check:
+        # Nếu key có ngày hết hạn và ngày đó đã qua, đặt trạng thái là 'expired'
+        if key.expiry_date and key.expiry_date < now:
+            key.status = 'expired'
+            needs_commit = True
+            
+    # Chỉ ghi vào database nếu có sự thay đổi
+    if needs_commit:
+        db.commit()
 
 
-# ========= CÁC HÀM GỐC (điều chỉnh import) =========
-
-def get_key_by_value(db: Session, key_value: str):
-    # Import cục bộ để tránh lỗi khi khởi tạo module
-    from ..models import LicenseKey
-    return db.query(LicenseKey).filter_by(key=key_value).first()
-
-
-def set_key_status(db: Session, key, status):
-    from ..models import KeyStatus
-    key.status = status
-    if status == KeyStatus.TEMP_LOCKED:
-        from datetime import datetime
-        # last_violation_at có trong schema
-        key.last_violation_at = datetime.utcnow()
-    db.commit()
-    return key
+def get_all_keys(db: Session) -> list[models.Key]:
+    """
+    Hàm để lấy danh sách key hiển thị trên trang quản trị.
+    Hàm này sẽ luôn gọi hàm kiểm tra trạng thái trước.
+    """
+    # Bước 1: Luôn chạy kiểm tra và cập nhật trạng thái trước khi lấy dữ liệu
+    check_and_update_all_keys_status(db)
+    
+    # Bước 2: Lấy và trả về danh sách key mới nhất từ DB
+    return db.query(models.Key).order_by(models.Key.id.desc()).all()
 
 
-# ========= HÀM CHO DASHBOARD (list + create) =========
+def activate_key_by_id(db: Session, key_id: int) -> models.Key | None:
+    """
+    Hàm xử lý logic kích hoạt một key.
+    """
+    key = db.query(models.Key).filter(models.Key.id == key_id).first()
+    
+    # Chỉ kích hoạt khi key tồn tại và đang ở trạng thái 'unused'
+    if key and key.status == 'unused':
+        key.status = 'active'
+        # Nếu key chưa có ngày hết hạn, mặc định là 30 ngày kể từ ngày kích hoạt
+        if not key.expiry_date:
+            key.expiry_date = datetime.now(timezone.utc) + timedelta(days=30)
+        
+        db.commit()
+        db.refresh(key) # Lấy lại dữ liệu mới nhất của key từ DB
+        return key
+        
+    # Trả về None nếu không tìm thấy key hoặc key không hợp lệ
+    return None
 
-def get_all_keys(db: Session, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-    from ..models import LicenseKey, KeyStatus
-    q = db.query(LicenseKey)
+def create_new_key(db: Session, days_valid: int | None = None) -> models.Key:
+    """
+    Hàm tạo một key mới, tách biệt logic khỏi router.
+    """
+    import random
+    import string
 
-    if filters:
-        if filters.get("status"):
-            try:
-                q = q.filter(LicenseKey.status == KeyStatus(filters["status"]))
-            except Exception:
-                pass
-        if filters.get("q"):
-            like = f"%{filters['q']}%"
-            q = q.filter(
-                (LicenseKey.key.ilike(like)) |
-                (LicenseKey.note.ilike(like))
-            )
+    # Hàm tạo key ngẫu nhiên
+    def generate_key_string():
+        chars = string.ascii_uppercase + string.digits
+        return '-'.join(''.join(random.choice(chars) for _ in range(5)) for _ in range(5))
 
-    items = q.order_by(LicenseKey.created_at.desc()).all()
-    out: List[Dict[str, Any]] = []
-    for k in items:
-        out.append({
-            "id": k.id,
-            "key": k.key,
-            "status": k.status.value if hasattr(k.status, "value") else str(k.status),
-            "note": k.note,
-            "offline_ttl_minutes": k.offline_ttl_minutes,
-            "created_at": getattr(k, "created_at", None).isoformat() if getattr(k, "created_at", None) else None,
-            "updated_at": getattr(k, "updated_at", None).isoformat() if getattr(k, "updated_at", None) else None,
-        })
-    return out
-
-
-def create_key(db: Session, key_value: str, *, note: str = "", offline_ttl_minutes: int = 0) -> Dict[str, Any]:
-    from ..models import LicenseKey, KeyStatus
-    if not key_value or not key_value.strip():
-        raise ValueError("EMPTY_KEY")
-
-    exists = db.query(LicenseKey).filter_by(key=key_value).first()
-    if exists:
-        raise ValueError("DUPLICATE_KEY")
-
-    k = LicenseKey(
-        key=key_value.strip(),
-        note=note or "",
-        offline_ttl_minutes=int(offline_ttl_minutes or 0),
-        status=KeyStatus.ACTIVE,
+    new_key_data = models.Key(
+        key=generate_key_string(),
+        status='unused'
     )
-    db.add(k)
+
+    if days_valid:
+        new_key_data.expiry_date = datetime.now(timezone.utc) + timedelta(days=days_valid)
+
+    db.add(new_key_data)
     db.commit()
-    db.refresh(k)
-    return {"id": k.id, "key": k.key}
+    db.refresh(new_key_data)
+    return new_key_data

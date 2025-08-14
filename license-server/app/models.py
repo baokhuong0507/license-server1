@@ -1,21 +1,23 @@
-# app/models.py
-from sqlalchemy import Column, String, DateTime, Integer
-from sqlalchemy.sql import func
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from datetime import datetime
+
 from app.database import Base
 
-class Key(Base):
-    __tablename__ = "keys"
+class LicenseKey(Base):
+    __tablename__ = "license_keys"
 
-    key_value = Column(String, primary_key=True, index=True)
-    status = Column(String, default="active", index=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now()) # Đã là DateTime
-    machine_id = Column(String, nullable=True)
-    activated_by_user = Column(String, nullable=True)
-    failed_attempts = Column(Integer, default=0)
-    program_name = Column(String, nullable=True, index=True, default="Default")
-    
-    # --- THAY ĐỔI QUAN TRỌNG ---
-    # Chuyển từ Date sang DateTime để lưu cả giờ
-    expiration_date = Column(DateTime(timezone=True), nullable=True)
-    
-    last_activated_at = Column(DateTime(timezone=True), nullable=True)
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    password = Column(String)
+
+class KeyStatus:
+    ACTIVE = "active"
+    INACTIVE = "inactive"

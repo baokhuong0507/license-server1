@@ -58,9 +58,8 @@
             </thead>
             <!-- Dữ liệu sẽ được nạp vào đây bằng HTMX -->
             <tbody id="keys-table-body">
-                {% for key in keys %}
-                    {% include "partials/keys_table_rows.html" %}
-                {% endfor %}
+                <!-- Tải nội dung ban đầu từ tệp partial mới -->
+                {% include "partials/table_body.html" %}
             </tbody>
         </table>
     </div>

@@ -6,35 +6,33 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import text
 
 # Import các thành phần cần thiết
-from .database import engine, get_db
+from .database import engine
 from . import models
 from .routers import admin_web, admin_api, client_api
 
-# --- PHẦN MÃ TẠM THỜI ĐỂ XÓA BẢNG ---
-# Mã này sẽ chạy một lần duy nhất trong lần deploy này.
+# --- PHẦN MÃ DỌN DẸP DATABASE TRIỆT ĐỂ ---
 print("="*80)
-print("RUNNING ONE-TIME DATABASE CLEANUP SCRIPT...")
+print("RUNNING FINAL DATABASE CLEANUP SCRIPT...")
 try:
     with engine.connect() as connection:
-        print("Connecting to the database to drop the old 'keys' table...")
-        # Dùng `IF EXISTS` để lệnh không báo lỗi nếu bảng đã bị xóa
-        connection.execute(text("DROP TABLE IF EXISTS keys;"))
-        # Quan trọng: commit thay đổi
+        print("Connecting to the database to drop old types and tables...")
+        # Lệnh này sẽ xóa kiểu dữ liệu 'keystatus' và BẤT KỲ THỨ GÌ phụ thuộc vào nó (như bảng 'keys')
+        # Đây là cách làm triệt để nhất.
+        connection.execute(text("DROP TYPE IF EXISTS keystatus CASCADE;"))
         connection.commit()
-        print("SUCCESS: Old 'keys' table has been dropped.")
+        print("SUCCESS: Old 'keystatus' type and dependent objects (like 'keys' table) have been dropped.")
 except Exception as e:
-    print(f"ERROR: Could not drop the table. Reason: {e}")
-    # Nếu không xóa được thì dừng lại để tránh lỗi
+    print(f"ERROR: Could not perform cleanup. Reason: {e}")
     sys.exit(1)
 print("="*80)
-# --- KẾT THÚC PHẦN MÃ TẠM THỜI ---
+# --- KẾT THÚC PHẦN MÃ DỌN DẸP ---
 
 
-# Lệnh này sẽ tạo lại bảng mới với cấu trúc chính xác
+# Lệnh này sẽ tạo lại TẤT CẢ MỌI THỨ từ đầu một cách sạch sẽ
 try:
-    print("Creating new 'keys' table with the correct schema...")
+    print("Re-creating all tables and types from scratch with the correct schema...")
     models.Base.metadata.create_all(bind=engine)
-    print("SUCCESS: New 'keys' table created.")
+    print("SUCCESS: All tables and types have been recreated correctly.")
 except Exception as e:
     print(f"FATAL: Could not create new tables. Error: {e}")
     sys.exit(1)

@@ -3,18 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>License Server</title>
-    <!-- Liên kết đến thư viện CSS Bulma để làm đẹp -->
+    <title>License Key Manager</title>
+    <!-- Thư viện CSS Bulma -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-    <!-- Tải thư viện HTMX để cập nhật giao diện không cần tải lại trang -->
+    <!-- Thư viện HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.10" integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC" crossorigin="anonymous"></script>
+    <!-- Thư viện SweetAlert2 cho hộp thoại đẹp hơn -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
-    <!-- 
-      Đây là khối nội dung chính. 
-      Tệp keys.html sẽ chèn nội dung của nó vào đây.
-    -->
-    {% block content %}
-    {% endblock %}
+    <!-- Thanh điều hướng (Navbar) -->
+    <nav class="navbar is-primary" role="navigation" aria-label="main navigation">
+        <div class="container">
+            <div class="navbar-brand">
+                <a class="navbar-item" href="/admin/keys">
+                    <strong class="is-size-4">KeyManager</strong>
+                </a>
+            </div>
+            <div class="navbar-menu">
+                <div class="navbar-start">
+                    <a class="navbar-item" href="/admin/keys">
+                        Manage Keys
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Khu vực hiển thị thông báo (sẽ được dùng sau) -->
+    <div id="notifications"></div>
+    
+    <!-- Nội dung chính của trang -->
+    <section class="section">
+        <div class="container">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="content has-text-centered">
+            <p>
+                <strong>License Key Manager</strong> by you.
+            </p>
+        </div>
+    </footer>
 </body>
 </html>

@@ -1,42 +1,67 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="section">
-    <div class="container">
+    <div class="box">
         <h1 class="title">Key Management</h1>
-        <p class="subtitle">Create and manage license keys.</p>
+        <p class="subtitle">Create, search, and manage your license keys.</p>
 
-        <!-- Form tạo key mới -->
-        <form hx-post="/admin/keys/create" hx-target="#keys-table-body" hx-swap="afterbegin" hx-on="htmx:afterRequest: this.reset()">
-            <div class="field has-addons">
-                <div class="control">
-                    <input class="input" type="number" name="days_valid" placeholder="Days until expiry (optional)">
-                </div>
-                <div class="control">
-                    <button class="button is-primary" type="submit">Create New Key</button>
+        <div class="columns">
+            <!-- Cột tạo key mới -->
+            <div class="column is-one-third">
+                <form hx-post="/admin/keys/create" hx-target="#keys-table-body" hx-swap="afterbegin" hx-on="htmx:afterRequest: this.reset()">
+                    <h2 class="title is-5">Create New Key</h2>
+                    <div class="field">
+                        <label class="label">Validity (Days)</label>
+                        <div class="control">
+                            <input class="input" type="number" name="days_valid" placeholder="e.g., 30 (optional)">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <div class="control">
+                            <button class="button is-primary is-fullwidth" type="submit">Create Key</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Cột tìm kiếm -->
+            <div class="column">
+                 <h2 class="title is-5">Search Keys</h2>
+                 <div class="field">
+                    <label class="label">Search by Key or Status</label>
+                    <div class="control">
+                        <input class="input" type="search" 
+                               name="search" 
+                               placeholder="Enter key string or status (unused, active, expired)..."
+                               hx-post="/admin/keys/search"
+                               hx-trigger="keyup changed delay:500ms, search"
+                               hx-target="#keys-table-body"
+                               hx-swap="innerHTML">
+                    </div>
                 </div>
             </div>
-        </form>
-
-        <!-- Bảng hiển thị key -->
-        <div class="table-container mt-5">
-            <table class="table is-fullwidth is-striped is-hoverable">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Key</th>
-                        <th>Status</th>
-                        <th>Expiry Date (UTC)</th>
-                        <th class="has-text-centered">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="keys-table-body">
-                    {% for key in keys %}
-                        {% include "partials/keys_table_rows.html" %}
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
     </div>
-</section>
+
+    <!-- Bảng hiển thị kết quả -->
+    <div class="box table-container mt-5">
+        <table class="table is-fullwidth is-striped is-hoverable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Key</th>
+                    <th>Status</th>
+                    <th>Expiry Date (UTC)</th>
+                    <th>Created At (UTC)</th>
+                    <th class="has-text-centered">Actions</th>
+                </tr>
+            </thead>
+            <!-- Dữ liệu sẽ được nạp vào đây bằng HTMX -->
+            <tbody id="keys-table-body">
+                {% for key in keys %}
+                    {% include "partials/keys_table_rows.html" %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 {% endblock %}

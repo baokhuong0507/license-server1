@@ -1,6 +1,6 @@
 # app/models.py
 
-from __future__ import annotations # <--- DÒNG QUAN TRỌNG NHẤT ĐỂ SỬA LỖI
+from __future__ import annotations
 from sqlalchemy import Column, Integer, String, DateTime, Enum
 from .database import Base
 import enum
@@ -11,7 +11,10 @@ class KeyStatus(str, enum.Enum):
     expired = "expired"
 
 class Key(Base):
-    __tablename__ = "keys"
+    # ĐÂY LÀ THAY ĐỔI DUY NHẤT VÀ QUAN TRỌNG NHẤT.
+    # Chúng ta sẽ sử dụng một tên bảng mới, sạch sẽ, và đúng cấu trúc,
+    # bỏ qua hoàn toàn bảng "keys" cũ đã bị lỗi.
+    __tablename__ = "license_keys_final"
 
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String, unique=True, index=True, nullable=False)

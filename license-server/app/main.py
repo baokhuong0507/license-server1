@@ -1,31 +1,49 @@
 # app/main.py
 
+import sys
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
+
+# Import các thành phần cần thiết
+from .database import check_database_connection, engine
 from . import models
-from .database import engine
 from .routers import admin_web, admin_api, client_api
 
-# Cố gắng tạo các bảng trong database khi ứng dụng khởi động
-# Nếu có lỗi (ví dụ: không kết nối được DB), ứng dụng sẽ báo lỗi rõ ràng
+
+# --- KIỂM TRA KẾT NỐI DATABASE ---
+# Đây là việc đầu tiên ứng dụng làm. Nếu thất bại, nó sẽ dừng lại.
+if not check_database_connection():
+    sys.exit(1) # Lệnh này sẽ dừng ứng dụng một cách an toàn
+
+
+# --- TẠO BẢNG DATABASE ---
+# Chỉ chạy sau khi kết nối thành công
 try:
+    print("STEP 2: Attempting to create database tables...")
     models.Base.metadata.create_all(bind=engine)
-    print("Database tables created or already exist.")
+    print("STEP 2: SUCCESS - Database tables are ready.")
 except Exception as e:
-    # In ra lỗi nếu không thể tạo bảng để dễ gỡ lỗi trên Render
-    print(f"FATAL: Could not connect to the database and create tables. Error: {e}")
+    print("="*80)
+    print(f"STEP 2: FATAL ERROR - Could not create database tables.")
+    print(f"Error details: {e}")
+    print("="*80)
+    sys.exit(1)
+
 
 # Khởi tạo ứng dụng FastAPI
+print("STEP 3: Initializing FastAPI application...")
 app = FastAPI(title="License Server")
 
-# Gắn các router (bộ định tuyến) vào ứng dụng chính
+# Gắn các router vào ứng dụng
 app.include_router(admin_web.router)
 app.include_router(admin_api.router)
 app.include_router(client_api.router)
+print("STEP 3: SUCCESS - FastAPI routers included.")
 
 
 @app.get("/", include_in_schema=False)
 async def root():
-    # Khi người dùng truy cập vào trang chủ, tự động chuyển hướng họ đến /admin/keys.
-    # Lỗi cú pháp nằm ở docstring của hàm này trong phiên bản trước.
+    """Khi truy cập trang chủ, chuyển hướng đến trang quản lý key."""
     return RedirectResponse(url="/admin/keys")
+
+print("STEP 4: Application startup complete. Server is ready.")

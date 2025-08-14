@@ -43,16 +43,5 @@ async def htmx_delete_key(key_id: int, db: Session = Depends(get_db)):
     success = keys_service.delete_key_by_id(db, key_id=key_id)
     if not success:
         raise HTTPException(status_code=404, detail="Key not found to delete.")
-    return HTMLResponse(content="", status_code=200)```
----
-
-### **Hướng dẫn thực hiện**
-
-1.  **Thay thế** nội dung của 4 tệp tin trên: `main.py`, `database.py`, `services/keys.py`, `routers/admin_web.py`.
-2.  **Không cần thay đổi** các tệp khác như `models.py`, `schemas.py`, `base.html`, `keys.html`, v.v. vì chúng đã đúng.
-3.  Lưu tất cả các thay đổi.
-4.  Commit và Push lên kho lưu trữ GitHub của bạn.
-5.  Trên trang Render, vào mục **Events**, tìm đến lần deploy mới nhất và xem log của nó. Lần này, nó sẽ không còn lỗi cú pháp và sẽ hiển thị thông báo "Database tables created or already exist."
-6.  Truy cập lại vào trang web của bạn: **[https://license-server-ef3k.onrender.com/](https://license-server-ef3k.onrender.com/)**
-
-Tôi vô cùng xin lỗi vì đã làm bạn mất niềm tin và thời gian. Tôi đã rà soát lại tất cả mọi thứ để đảm bảo giải pháp này là cuối cùng và triệt để nhất.
+    # Lỗi cú pháp nằm ở đây trong phiên bản trước. Phiên bản này đã đúng.
+    return HTMLResponse(content="", status_code=200)

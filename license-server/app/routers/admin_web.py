@@ -1,9 +1,8 @@
 # app/routers/admin_web.py
 
 from __future__ import annotations
-# Thêm RedirectResponse để chuyển hướng
-from fastapi import APIRouter, Request, Depends, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi import APIRouter, Request, Depends, Form, HTTPException
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -16,38 +15,30 @@ router = APIRouter(
 )
 templates = Jinja2Templates(directory="app/templates")
 
-# --- ROUTE CHUYỂN HƯỚNG MỚI ---
-@router.get("/dashboard", response_class=RedirectResponse)
-async def redirect_to_keys_page():
-    """
-    Khi người dùng truy cập /admin/dashboard, tự động chuyển họ đến /admin/keys.
-    """
-    return RedirectResponse(url="/admin/keys")
-
-
 @router.get("/keys", response_class=HTMLResponse)
 async def keys_page(request: Request, db: Session = Depends(get_db)):
-    """
-    Đây là trang quản lý key chính.
-    """
+    """Trang chính hiển thị bảng quản lý key."""
     all_keys = keys_service.get_all_keys(db)
     return templates.TemplateResponse("keys.html", {"request": request, "keys": all_keys})
 
 @router.post("/keys/create", response_class=HTMLResponse)
 async def htmx_create_key(request: Request, days_valid: int = Form(None), db: Session = Depends(get_db)):
+    """Tạo key mới và trả về HTML cho một hàng mới."""
     new_key = keys_service.create_new_key(db, days_valid)
     return templates.TemplateResponse("partials/keys_table_rows.html", {"request": request, "key": new_key})
 
 @router.post("/keys/{key_id}/activate", response_class=HTMLResponse)
 async def htmx_activate_key(request: Request, key_id: int, db: Session = Depends(get_db)):
+    """Kích hoạt key và trả về HTML của hàng đã được cập nhật."""
     updated_key = keys_service.activate_key_by_id(db, key_id=key_id)
+    if not updated_key:
+        raise HTTPException(status_code=400, detail="Key cannot be activated.")
     return templates.TemplateResponse("partials/keys_table_rows.html", {"request": request, "key": updated_key})
 
 @router.delete("/keys/{key_id}", response_class=HTMLResponse)
-async def htmx_delete_key(request: Request, key_id: int, db: Session = Depends(get_db)):
-    # Thay đổi nhỏ ở đây để dùng lại hàm service
-    key_to_delete = db.query(keys_service.models.Key).filter(keys_service.models.Key.id == key_id).first()
-    if key_to_delete:
-        db.delete(key_to_delete)
-        db.commit()
-    return HTMLResponse("")
+async def htmx_delete_key(key_id: int, db: Session = Depends(get_db)):
+    """Xóa một key và trả về response trống để HTMX xóa hàng."""
+    success = keys_service.delete_key_by_id(db, key_id=key_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Key not found.")
+    return HTMLResponse(content="", status_code=200)

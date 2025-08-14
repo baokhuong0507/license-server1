@@ -1,24 +1,33 @@
+# app/main.py
+
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 
-from app.routers import admin_api, admin_web, client_api
+from . import models
+from .database import engine
+from .routers import admin_web, admin_api, client_api
 
-# Nếu bạn dùng render hoặc server như Uvicorn
-import os
+# Lệnh này sẽ tạo các bảng trong database dựa trên models.py
+# Nó chỉ chạy một lần khi ứng dụng khởi động.
+models.Base.metadata.create_all(bind=engine)
 
+# Khởi tạo ứng dụng FastAPI
 app = FastAPI(title="License Server")
 
-# Mount API routers
-app.include_router(admin_api.router, prefix="/api/admin")
-app.include_router(admin_web.router, prefix="/admin")
-app.include_router(client_api.router, prefix="/api")
+# Gắn các router từ các tệp khác vào ứng dụng chính
+app.include_router(admin_web.router)
+app.include_router(admin_api.router)
+app.include_router(client_api.router)
 
-# Static & template
+# Gắn thư mục static để phục vụ các file CSS, JS (nếu có)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
-templates = Jinja2Templates(directory="app/templates")
 
-# Root route
-@app.get("/")
+
+@app.get("/", include_in_schema=False)
 async def root():
-    return {"message": "License Server is running"}
+    """
+    Khi người dùng truy cập vào trang chủ (ví dụ: https://license-server-ef3k.onrender.com/),
+    tự động chuyển hướng họ đến trang quản lý key.
+    """
+    return RedirectResponse(url="/admin/keys")

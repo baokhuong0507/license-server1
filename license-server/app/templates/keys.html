@@ -1,37 +1,42 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
-    <h1 class="title">Key Management</h1>
+<section class="section">
+    <div class="container">
+        <h1 class="title">Key Management</h1>
+        <p class="subtitle">Create and manage license keys.</p>
 
-    <!-- Form để tạo key mới -->
-    <form hx-post="/admin/keys/create" hx-target="#keys-table-body" hx-swap="afterbegin">
-        <div class="field has-addons">
-            <div class="control">
-                <input class="input" type="number" name="days_valid" placeholder="Days until expiry (optional)">
+        <!-- Form tạo key mới -->
+        <form hx-post="/admin/keys/create" hx-target="#keys-table-body" hx-swap="afterbegin" hx-on="htmx:afterRequest: this.reset()">
+            <div class="field has-addons">
+                <div class="control">
+                    <input class="input" type="number" name="days_valid" placeholder="Days until expiry (optional)">
+                </div>
+                <div class="control">
+                    <button class="button is-primary" type="submit">Create New Key</button>
+                </div>
             </div>
-            <div class="control">
-                <button class="button is-primary" type="submit">Create New Key</button>
-            </div>
+        </form>
+
+        <!-- Bảng hiển thị key -->
+        <div class="table-container mt-5">
+            <table class="table is-fullwidth is-striped is-hoverable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Key</th>
+                        <th>Status</th>
+                        <th>Expiry Date (UTC)</th>
+                        <th class="has-text-centered">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="keys-table-body">
+                    {% for key in keys %}
+                        {% include "partials/keys_table_rows.html" %}
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-    </form>
-
-    <table class="table is-fullwidth is-striped is-hoverable mt-5">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Key</th>
-                <th>Status</th>
-                <th>Expiry Date</th>
-                <th class="has-text-centered">Actions</th>
-            </tr>
-        </thead>
-        <tbody id="keys-table-body">
-            <!-- Dữ liệu các key sẽ được render ở đây -->
-            {% for key in keys %}
-                {% include "partials/keys_table_rows.html" %}
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+    </div>
+</section>
 {% endblock %}

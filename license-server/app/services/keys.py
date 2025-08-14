@@ -1,26 +1,22 @@
 # app/services/keys.py
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
-# import "lười" để tránh ImportError do thứ tự nạp module
+# Dùng import "lười" để tránh lỗi ImportError do thứ tự nạp module
 from .. import models
 
-# ===== HÀM SẴN CÓ (điều chỉnh import) =====
-
+# ===== HÀM SẴN CÓ (giữ chức năng cũ, đổi import) =====
 def get_key_by_value(db: Session, key_value: str):
     return db.query(models.LicenseKey).filter_by(key=key_value).first()
 
 def set_key_status(db: Session, key, status):
+    key.status = status
     if status == models.KeyStatus.TEMP_LOCKED:
-        key.status = models.KeyStatus.TEMP_LOCKED
-    else:
-        key.status = status
-    db.add(key)
+        from datetime import datetime
+        key.last_violation_at = datetime.utcnow()
     db.commit()
-    db.refresh(key)
     return key
 
-# ===== HÀM BỔ SUNG CHO DASHBOARD =====
-
+# ===== HÀM MỚI CHO DASHBOARD =====
 def get_all_keys(db: Session, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
     q = db.query(models.LicenseKey)
     if filters:

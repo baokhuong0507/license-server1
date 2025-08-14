@@ -1,7 +1,6 @@
 # app/routers/admin_api.py
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
-
 from ..deps import get_db
 from ..services import keys as key_service
 
@@ -14,10 +13,8 @@ def get_all_keys_json(
     db: Session = Depends(get_db),
 ):
     filters = {}
-    if status:
-        filters["status"] = status
-    if q:
-        filters["q"] = q
+    if status: filters["status"] = status
+    if q: filters["q"] = q
     return {"items": key_service.get_all_keys(db, filters=filters)}
 
 @router.post("/keys")
@@ -36,4 +33,5 @@ def create_key_api(
             offline_ttl_minutes=offline_ttl,
         )
     except ValueError as e:
+        # Các mã: EMPTY_KEY, DUPLICATE_KEY
         raise HTTPException(status_code=400, detail=str(e))

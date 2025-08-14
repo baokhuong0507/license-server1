@@ -5,7 +5,8 @@ import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
-
+from .routers.client_api import router as client_api_router
+from .routers.admin_api import router as admin_api_router
 app = FastAPI(title="License Server")
 
 # Mount static nếu thư mục tồn tại (tránh lỗi Directory does not exist)
@@ -20,7 +21,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.include_router(client_api_router)
+app.include_router(admin_api_router)
 # Include các router (có gì include cái đó, thiếu cũng không làm crash)
 try:
     from .routers.client_api import router as client_api_router
